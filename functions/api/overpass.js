@@ -9,16 +9,30 @@ const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 const USER_AGENT = 'gpx-studio-selfhost (+https://github.com/charles0506/gpx-studio)';
 
 async function proxy(query) {
-    const upstream = await fetch(OVERPASS_URL, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'text/plain',
-            // Without a User-Agent overpass-api.de answers 406, and the Workers
-            // runtime does not set one by itself.
-            'User-Agent': USER_AGENT,
-        },
-        body: query,
-    });
+    // overpass-api.de refuses a connection now and then, which reaches the page
+    // as a 521, so one retry is worth the wait.
+    let upstream;
+    for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt > 0) {
+            await new Promise((resolve) => setTimeout(resolve, 500));
+        }
+        upstream = await fetch(OVERPASS_URL, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'text/plain',
+                // Without a User-Agent overpass-api.de answers 406, and the
+                // Workers runtime does not set one by itself.
+                'User-Agent': USER_AGENT,
+            },
+            body: query,
+        }).catch(() => null);
+
+        if (upstream && upstream.ok) break;
+    }
+
+    if (!upstream) {
+        return new Response('overpass-api.de is unreachable', { status: 502 });
+    }
 
     return new Response(upstream.body, {
         status: upstream.status,

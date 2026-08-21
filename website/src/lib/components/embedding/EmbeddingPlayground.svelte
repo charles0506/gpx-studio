@@ -22,7 +22,7 @@
         getCleanedEmbeddingOptions,
         getMergedEmbeddingOptions,
     } from './embedding';
-    import { PUBLIC_MAPTILER_KEY } from '$env/static/public';
+    import { PUBLIC_MAPTILER_KEY } from '$lib/maptiler';
     import Embedding from './Embedding.svelte';
     import { onDestroy } from 'svelte';
     import { base } from '$app/paths';

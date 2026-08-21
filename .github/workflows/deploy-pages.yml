@@ -34,10 +34,6 @@ jobs:
         working-directory: website
         run: npm ci
 
-      - name: Write .env
-        working-directory: website
-        # The fork uses key-free tile sources, but the variable must exist for the build.
-        run: echo "PUBLIC_MAPTILER_KEY=unused" > .env
 
       - name: Build the website
         working-directory: website

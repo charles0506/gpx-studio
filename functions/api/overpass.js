@@ -30,19 +30,7 @@ async function proxy(query) {
 }
 
 export async function onRequestGet({ request }) {
-    const url = new URL(request.url);
-
-    // Diagnostic: report which headers the upstream actually receives, so a
-    // deployment can be told apart from the one before it.
-    if (url.searchParams.has('ping')) {
-        const echo = await fetch('https://httpbin.org/headers', {
-            headers: { 'User-Agent': USER_AGENT },
-        });
-        const seen = echo.ok ? await echo.json() : { error: echo.status };
-        return Response.json({ version: 2, userAgent: USER_AGENT, seen });
-    }
-
-    const query = url.searchParams.get('data');
+    const query = new URL(request.url).searchParams.get('data');
     if (!query) {
         return new Response('missing "data" query parameter', { status: 400 });
     }

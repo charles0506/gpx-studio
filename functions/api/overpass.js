@@ -10,7 +10,12 @@ const OVERPASS_URL = 'https://overpass-api.de/api/interpreter';
 async function proxy(query) {
     const upstream = await fetch(OVERPASS_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'text/plain' },
+        headers: {
+            'Content-Type': 'text/plain',
+            // Without a User-Agent overpass-api.de answers 406, and the Workers
+            // runtime does not set one by itself.
+            'User-Agent': 'gpx-studio-selfhost (+https://github.com/charles0506/gpx-studio)',
+        },
         body: query,
     });
 

@@ -23,8 +23,18 @@ liveQuery(() => db.overpassdata.toArray()).subscribe((pois) => {
     data.set({ type: 'FeatureCollection', features: pois.map((poi) => poi.poi) });
 });
 
+// overpass-api.de refuses browser requests coming from a *.pages.dev origin
+// with a 406 and no CORS headers, so the Cloudflare deployment goes through the
+// same-origin proxy in functions/api/overpass.js instead.
+function getOverpassUrl(): string {
+    if (typeof location !== 'undefined' && location.hostname.endsWith('.pages.dev')) {
+        return '/api/overpass';
+    }
+    return 'https://overpass-api.de/api/interpreter';
+}
+
 export class OverpassLayer {
-    overpassUrl = 'https://overpass-api.de/api/interpreter';
+    overpassUrl = getOverpassUrl();
     minZoom = 12;
     queryZoom = 12;
     expirationTime = 7 * 24 * 3600 * 1000;

@@ -12,4 +12,9 @@ export const languages: Record<string, string> = {
     tr: 'Türkçe',
     uk: 'Українська',
     zh: '简体中文',
+    'zh-TW': '繁體中文',
 };
+
+// Language used when the URL carries no language prefix. Upstream ships English;
+// this fork is aimed at Taiwanese hikers.
+export const defaultLanguage = 'zh-TW';

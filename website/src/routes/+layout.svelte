@@ -8,7 +8,7 @@
     import { onMount, type Snippet } from 'svelte';
     import { convertOldEmbeddingOptions } from '$lib/components/embedding/embedding';
     import { base } from '$app/paths';
-    import { languages } from '$lib/languages';
+    import { defaultLanguage, languages } from '$lib/languages';
     import { browser } from '$app/environment';
     import { goto } from '$app/navigation';
     import { getURLForLanguage } from '$lib/utils';
@@ -46,8 +46,8 @@
                         goto(`${base}/404`);
                     }
                 }
-            } else if (i18n.lang !== 'en') {
-                i18n.lang = 'en';
+            } else if (i18n.lang !== defaultLanguage) {
+                i18n.lang = defaultLanguage;
             }
         } else if (i18n.lang === '') {
             i18n.lang = 'en';

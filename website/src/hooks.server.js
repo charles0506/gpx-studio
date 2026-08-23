@@ -1,9 +1,9 @@
 import { base } from '$app/paths';
-import { languages } from '$lib/languages';
+import { defaultLanguage, languages } from '$lib/languages';
 import { getURLForLanguage } from '$lib/utils';
 
 export async function handle({ event, resolve }) {
-    const language = event.params.language ?? 'en';
+    const language = event.params.language ?? defaultLanguage;
     const strings = await import(`./locales/${language}.json`);
 
     const path = event.url.pathname;

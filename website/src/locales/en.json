@@ -213,7 +213,12 @@
             "artificial": "Create realistic time data",
             "update": "Update time data",
             "help": "Use the form to set new time data.",
-            "help_invalid_selection": "Select a single trace to manage its time data."
+            "help_invalid_selection": "Select a single trace to manage its time data.",
+            "estimate": {
+                "label": "Estimated walking time",
+                "button": "Use estimate",
+                "help": "Tobler's hiking function, scaled by the factor on the left. Lower it for rough trails, raise it if you move fast."
+            }
         },
         "merge": {
             "merge_traces": "Connect the traces",

@@ -12,7 +12,15 @@
         nauticalMilesToKilometers,
     } from '$lib/units';
     import { CalendarDate, type DateValue } from '@internationalized/date';
-    import { CalendarClock, CirclePlay, CircleStop, CircleX, Timer, Zap } from '@lucide/svelte';
+    import {
+        CalendarClock,
+        CirclePlay,
+        CircleStop,
+        CircleX,
+        Footprints,
+        Timer,
+        Zap,
+    } from '@lucide/svelte';
     import { untrack } from 'svelte';
     import { i18n } from '$lib/i18n.svelte';
     import {
@@ -27,6 +35,12 @@
     import { settings } from '$lib/logic/settings';
     import { fileActionManager } from '$lib/logic/file-action-manager';
     import { gpxStatistics } from '$lib/logic/statistics';
+    import {
+        defaultFitnessFactor,
+        estimateHikingTime,
+        maximumFitnessFactor,
+        minimumFitnessFactor,
+    } from '$lib/hiking-time';
 
     let props: {
         class?: string;
@@ -39,6 +53,26 @@
     let movingTime: number | undefined = $state(undefined);
     let speed: number | undefined = $state(undefined);
     let artificial = $state(true);
+    let fitnessFactor = $state(defaultFitnessFactor);
+
+    let estimate = $derived(estimateHikingTime($gpxStatistics, fitnessFactor));
+
+    function applyEstimate() {
+        if (estimate === undefined) {
+            return;
+        }
+        movingTime = estimate;
+        updateDataFromTotalTime();
+    }
+
+    function formatEstimate(seconds: number): string {
+        // Round to minutes first, so that 119 min 40 s reads as 2 h 0 min
+        // rather than 1 h 60 min.
+        const totalMinutes = Math.round(seconds / 60);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+        return hours > 0 ? `${hours} h ${minutes} min` : `${minutes} min`;
+    }
 
     function toCalendarDate(date: Date): CalendarDate {
         return new CalendarDate(date.getFullYear(), date.getMonth() + 1, date.getDate());
@@ -252,6 +286,39 @@
                     }}
                 />
             </div>
+        </div>
+        <div class="flex flex-col gap-1">
+            <Label for="fitness-factor" class="flex flex-row">
+                <Footprints size="16" />
+                {i18n._('toolbar.time.estimate.label')}
+            </Label>
+            <div class="flex flex-row gap-1.5 items-center">
+                <Input
+                    id="fitness-factor"
+                    type="number"
+                    step={0.05}
+                    min={minimumFitnessFactor}
+                    max={maximumFitnessFactor}
+                    disabled={!canUpdate}
+                    bind:value={fitnessFactor}
+                    class="text-sm w-20 shrink-0"
+                />
+                <Button
+                    variant="outline"
+                    class="grow text-xs px-1.5 py-1.5 h-fit"
+                    disabled={!canUpdate || estimate === undefined}
+                    onclick={applyEstimate}
+                >
+                    {#if estimate === undefined}
+                        {i18n._('toolbar.time.estimate.button')}
+                    {:else}
+                        {i18n._('toolbar.time.estimate.button')} · {formatEstimate(estimate)}
+                    {/if}
+                </Button>
+            </div>
+            <span class="text-xs text-muted-foreground">
+                {i18n._('toolbar.time.estimate.help')}
+            </span>
         </div>
         <div class="flex flex-col gap-1">
             <Label class="flex flex-row">

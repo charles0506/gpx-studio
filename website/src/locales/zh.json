@@ -213,7 +213,12 @@
             "artificial": "创建实际时间数据",
             "update": "更新时间数据",
             "help": "使用表单设置新的时间数据。",
-            "help_invalid_selection": "选择一个单一的轨迹来管理其时间数据。"
+            "help_invalid_selection": "选择一个单一的轨迹来管理其时间数据。",
+            "estimate": {
+                "label": "预估行走时间",
+                "button": "应用预估",
+                "help": "Tobler 步行函数，按左侧系数缩放。路况差就调低，走得快就调高。"
+            }
         },
         "merge": {
             "merge_traces": "合并为一条连续轨迹",

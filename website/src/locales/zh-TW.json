@@ -213,7 +213,12 @@
             "artificial": "建立實際時間資料",
             "update": "更新時間資料",
             "help": "使用表單設定新的時間資料。",
-            "help_invalid_selection": "選擇一個軌跡來管理時間資料。"
+            "help_invalid_selection": "選擇一個軌跡來管理時間資料。",
+            "estimate": {
+                "label": "預估行走時間",
+                "button": "套用預估",
+                "help": "Tobler 步行函數，依左側係數縮放。路況差就調低，走得快就調高。"
+            }
         },
         "merge": {
             "merge_traces": "合併為一條連續軌跡",

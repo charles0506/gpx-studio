@@ -23,6 +23,7 @@ import {
     Toilet,
 } from 'lucide-static';
 import { type RasterDEMSourceSpecification, type StyleSpecification } from 'maplibre-gl';
+import { blankImage } from '$lib/cwa-radar';
 import ignFrTopo from './custom/ign-fr-topo.json';
 import ignFrPlan from './custom/ign-fr-plan.json';
 import ignFrSatellite from './custom/ign-fr-satellite.json';
@@ -412,18 +413,16 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
         sources: {
             cwaRadarAll: {
                 type: 'image',
-                // All seven radars composited by CWA, covering the island in one
-                // image. Republished every ten minutes rather than every ninety
-                // seconds, which is the price of the wider view. Served from S3
-                // with permissive CORS, so no proxy is needed.
-                url: 'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-003.png?t=CWA_RADAR_STAMP',
-                // LongitudeRange 118.0-124.0 and LatitudeRange 20.5-26.5, as the
+                // Starts blank: the real scan is fetched, keyed to transparency
+                // and handed over by the style manager. See lib/cwa-radar.ts.
+                url: blankImage,
+                // LongitudeRange 118-124 and LatitudeRange 20.5-26.5, as the
                 // dataset metadata declares, clockwise from the top left.
                 coordinates: [
-                    [118.0, 26.5],
-                    [124.0, 26.5],
-                    [124.0, 20.5],
-                    [118.0, 20.5],
+                    [118, 26.5],
+                    [124, 26.5],
+                    [124, 20.5],
+                    [118, 20.5],
                 ],
             },
         },
@@ -433,7 +432,7 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 type: 'raster',
                 source: 'cwaRadarAll',
                 paint: {
-                    'raster-opacity': 0.7,
+                    'raster-opacity': 0.75,
                 },
             },
         ],
@@ -443,10 +442,9 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
         sources: {
             cwaRadarNorth: {
                 type: 'image',
-                // Proxied because www.cwa.gov.tw sends no CORS headers;
-                // CWA_RADAR_STAMP becomes a cache-buster so a new scan is
-                // actually picked up.
-                url: '/api/cwa-radar?site=north&t=CWA_RADAR_STAMP',
+                // Starts blank: the real scan is fetched, keyed to transparency
+                // and handed over by the style manager. See lib/cwa-radar.ts.
+                url: blankImage,
                 // 150 km around the station, clockwise from the top left.
                 coordinates: [
                     [119.9132, 26.3566],
@@ -462,7 +460,7 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 type: 'raster',
                 source: 'cwaRadarNorth',
                 paint: {
-                    'raster-opacity': 0.7,
+                    'raster-opacity': 0.75,
                 },
             },
         ],
@@ -472,10 +470,9 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
         sources: {
             cwaRadarCentral: {
                 type: 'image',
-                // Proxied because www.cwa.gov.tw sends no CORS headers;
-                // CWA_RADAR_STAMP becomes a cache-buster so a new scan is
-                // actually picked up.
-                url: '/api/cwa-radar?site=central&t=CWA_RADAR_STAMP',
+                // Starts blank: the real scan is fetched, keyed to transparency
+                // and handed over by the style manager. See lib/cwa-radar.ts.
+                url: blankImage,
                 // 150 km around the station, clockwise from the top left.
                 coordinates: [
                     [119.1034, 25.4966],
@@ -491,7 +488,7 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 type: 'raster',
                 source: 'cwaRadarCentral',
                 paint: {
-                    'raster-opacity': 0.7,
+                    'raster-opacity': 0.75,
                 },
             },
         ],
@@ -501,10 +498,9 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
         sources: {
             cwaRadarSouth: {
                 type: 'image',
-                // Proxied because www.cwa.gov.tw sends no CORS headers;
-                // CWA_RADAR_STAMP becomes a cache-buster so a new scan is
-                // actually picked up.
-                url: '/api/cwa-radar?site=south&t=CWA_RADAR_STAMP',
+                // Starts blank: the real scan is fetched, keyed to transparency
+                // and handed over by the style manager. See lib/cwa-radar.ts.
+                url: blankImage,
                 // 150 km around the station, clockwise from the top left.
                 coordinates: [
                     [118.9212, 23.8866],
@@ -520,7 +516,7 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 type: 'raster',
                 source: 'cwaRadarSouth',
                 paint: {
-                    'raster-opacity': 0.7,
+                    'raster-opacity': 0.75,
                 },
             },
         ],

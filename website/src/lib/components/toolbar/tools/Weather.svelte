@@ -141,9 +141,14 @@
         return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
     }
 
-    // Rain bars are scaled against 10 mm in an hour, which is already heavy.
-    function barHeight(mm: number): number {
-        return Math.min(100, Math.round((mm / 10) * 100));
+    // Scale to the heaviest hour in view, with a 2 mm floor so that a drizzle
+    // does not fill the plot and a dry day does not draw noise.
+    function scaleMax(values: number[]): number {
+        return Math.max(2, Math.ceil(Math.max(0, ...values)));
+    }
+
+    function barHeight(mm: number, max: number): number {
+        return Math.min(100, Math.round((mm / max) * 100));
     }
 </script>
 
@@ -249,6 +254,7 @@
         {@const start = departure()}
         {@const end = new Date(start.getTime() + (totalSeconds ?? 0) * 1000)}
         {@const window = walk.times.map((t, i) => i).filter((i) => walk.times[i] >= startOfHour(start)).slice(0, 24)}
+        {@const max = scaleMax(window.map((i) => walk.precipitation[i] ?? 0))}
         <div class="flex flex-col gap-1">
             <Label class="flex flex-row justify-between">
                 <span>{i18n._('toolbar.weather.next_24h')}</span>
@@ -257,16 +263,24 @@
                     {rainBetween(walk, start, end)} mm
                 </span>
             </Label>
-            <div class="flex flex-row items-end gap-px h-12 border-b">
-                {#each window as i}
-                    {@const time = walk.times[i]}
-                    {@const mm = walk.precipitation[i] ?? 0}
-                    <div
-                        class="grow bg-sky-500/70 min-h-px"
-                        style="height: {barHeight(mm)}%"
-                        title="{clockOf(time)} · {mm} mm · {walk.precipitationProbability[i]}%"
-                    ></div>
-                {/each}
+            <div class="flex flex-row gap-1">
+                <div
+                    class="flex flex-col justify-between text-[10px] text-muted-foreground h-12 shrink-0 text-right"
+                >
+                    <span>{max} mm</span>
+                    <span>0</span>
+                </div>
+                <div class="grow flex flex-row items-end gap-px h-12 border-b border-l pl-px">
+                    {#each window as i}
+                        {@const time = walk.times[i]}
+                        {@const mm = walk.precipitation[i] ?? 0}
+                        <div
+                            class="grow bg-sky-500/70 min-h-px"
+                            style="height: {barHeight(mm, max)}%"
+                            title="{clockOf(time)} · {mm} mm · {walk.precipitationProbability[i]}%"
+                        ></div>
+                    {/each}
+                </div>
             </div>
             <div class="flex flex-row justify-between text-[10px] text-muted-foreground">
                 {#each [0, 6, 12, 18] as offset}

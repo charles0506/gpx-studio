@@ -1,62 +1,55 @@
-// The Central Weather Administration runs three rain radars. Each publishes a
-// square image, 3600 px across, covering 150 km around its own site — one
-// station alone leaves most of the island uncovered, so the overlay carries all
-// three.
+// CWA publishes radar imagery as opaque PNGs: a neutral grey base map with the
+// echoes painted on top in a saturated palette. Laid over a basemap as-is, the
+// base greys everything out — which is what "the radar breaks the map" was.
+// Nothing in MapLibre keys a colour out of a raster layer, so the images are
+// repainted in a canvas first; see lib/radar-image.ts.
 //
-// Each file is overwritten in place every ninety seconds and nothing in its URL
-// changes between scans, so a cache-buster is the only way to pick a new one
-// up. Hence the placeholder in the overlay definition.
-export const cwaRadarStampPlaceholder = 'CWA_RADAR_STAMP';
+// These are the S3-hosted open-data products rather than the ones behind the
+// public web page: same scans, permissive CORS so no proxy is needed, and a
+// grey base rather than a green one, which is what makes the background
+// separable from the weather at all.
+const S3 = 'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation';
 
-export const cwaRadarRefreshInterval = 90 * 1000;
+// Every image is a transparent 1x1 until the keyed version is ready. Handing
+// MapLibre the real URL first would flash the opaque original over the map.
+export const blankImage =
+    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYGD4DwABBAEAX+aBpQAAAABJRU5ErkJggg==';
 
-// Station coordinates and the 150 km range come from the O-A0084-00x dataset
-// metadata.
-export const cwaRadarStations = [
-    { id: 'cwaRadarNorth', site: 'north', name: '樹林', lon: 121.4, lat: 25.0 },
-    { id: 'cwaRadarCentral', site: 'central', name: '南屯', lon: 120.58, lat: 24.14 },
-    { id: 'cwaRadarSouth', site: 'south', name: '林園', lon: 120.38, lat: 22.53 },
-] as const;
+export type RadarStationDefinition = {
+    /** Both the overlay key and the id of its source and layer. */
+    id: string;
+    /** Where the scan comes from. */
+    source: string;
+    /** How often it is republished. */
+    refreshMs: number;
+};
 
-const RANGE_KM = 150;
+// The composite of all seven radars covers the island but is republished every
+// ten minutes; the three rain radars each reach 150 km and land every ninety
+// seconds.
+export const cwaRadarDefinitions: RadarStationDefinition[] = [
+    { id: 'cwaRadarAll', source: `${S3}/O-A0058-003.png`, refreshMs: 5 * 60 * 1000 },
+    { id: 'cwaRadarNorth', source: `${S3}/O-A0084-001.png`, refreshMs: 90 * 1000 },
+    { id: 'cwaRadarCentral', source: `${S3}/O-A0084-002.png`, refreshMs: 90 * 1000 },
+    { id: 'cwaRadarSouth', source: `${S3}/O-A0084-003.png`, refreshMs: 90 * 1000 },
+];
 
-/**
- * The four corners of a station's image, clockwise from the top left, as
- * MapLibre wants them. The image is a square in kilometres rather than in
- * degrees, so the longitude span is widened by the latitude it sits at.
- */
-export function stationCoordinates(station: { lon: number; lat: number }): number[][] {
-    const latSpan = RANGE_KM / 110.574;
-    const lonSpan = RANGE_KM / (111.32 * Math.cos((station.lat * Math.PI) / 180));
-
-    const west = station.lon - lonSpan;
-    const east = station.lon + lonSpan;
-    const north = station.lat + latSpan;
-    const south = station.lat - latSpan;
-
-    return [
-        [west, north],
-        [east, north],
-        [east, south],
-        [west, south],
-    ];
+export function radarDefinitionFor(sourceId: string): RadarStationDefinition | undefined {
+    return cwaRadarDefinitions.find((definition) => definition.id === sourceId);
 }
 
-/**
- * Replace the cache-buster placeholder in every image source of a style, in
- * place. Returns the source ids that were stamped.
- */
-export function applyCwaRadarStamp(style: any): string[] {
-    const stamped: string[] = [];
-    const now = String(Date.now());
+/** The station coordinates and 150 km range come from the O-A0084 metadata. */
+const RANGE_KM = 150;
 
-    for (const sourceId in style?.sources ?? {}) {
-        const source = style.sources[sourceId];
-        if (typeof source?.url === 'string' && source.url.includes(cwaRadarStampPlaceholder)) {
-            source.url = source.url.replace(cwaRadarStampPlaceholder, now);
-            stamped.push(sourceId);
-        }
-    }
+export function stationCoordinates(lon: number, lat: number): number[][] {
+    const latSpan = RANGE_KM / 110.574;
+    const lonSpan = RANGE_KM / (111.32 * Math.cos((lat * Math.PI) / 180));
+    const round = (value: number) => Number(value.toFixed(4));
 
-    return stamped;
+    return [
+        [round(lon - lonSpan), round(lat + latSpan)],
+        [round(lon + lonSpan), round(lat + latSpan)],
+        [round(lon + lonSpan), round(lat - latSpan)],
+        [round(lon - lonSpan), round(lat - latSpan)],
+    ];
 }

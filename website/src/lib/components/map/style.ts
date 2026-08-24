@@ -8,7 +8,8 @@ import {
     terrainSources,
 } from '$lib/assets/layers';
 import { getLayers } from '$lib/components/map/layer-control/utils';
-import { applyCwaRadarStamp, cwaRadarRefreshInterval } from '$lib/cwa-radar';
+import { radarDefinitionFor } from '$lib/cwa-radar';
+import { fetchTransparentRadar, type RadarImage } from '$lib/radar-image';
 import { i18n } from '$lib/i18n.svelte';
 import type {
     Map,
@@ -48,7 +49,8 @@ const anchorLayers: LayerSpecification[] = Object.values(ANCHOR_LAYER_KEY).map((
 export class StyleManager {
     private _map: Writable<Map | null>;
     private _maptilerKey: string;
-    private _cwaRadarTimer: ReturnType<typeof setInterval> | undefined = undefined;
+    private _radarTimers: Map<string, ReturnType<typeof setInterval>> = new Map();
+    private _radarImages: Map<string, RadarImage> = new Map();
     private _pastOverlays: Set<string> = new Set();
 
     constructor(map: Writable<Map | null>, maptilerKey: string) {
@@ -149,6 +151,9 @@ export class StyleManager {
                                     map_.removeLayer(layer.id);
                                 }
                             }
+                            for (const sourceId in overlayStyle.sources ?? {}) {
+                                this.stopRadar(sourceId);
+                            }
                         } catch (e) {
                             // Should not happen
                         }
@@ -158,14 +163,10 @@ export class StyleManager {
                     const overlayInfo = custom[overlay]?.value ?? overlays[overlay];
                     try {
                         const overlayStyle = await this.get(overlayInfo);
-                        const stampedSources = applyCwaRadarStamp(overlayStyle);
-                        if (stampedSources.length > 0) {
-                            this.scheduleCwaRadarRefresh(
-                                stampedSources.map((sourceId) => ({
-                                    sourceId,
-                                    url: (overlayStyle.sources![sourceId] as any).url as string,
-                                }))
-                            );
+                        for (const sourceId in overlayStyle.sources ?? {}) {
+                            if (radarDefinitionFor(sourceId)) {
+                                this.startRadar(sourceId);
+                            }
                         }
                         const opacity = overlayOpacities[overlay];
 
@@ -220,28 +221,63 @@ export class StyleManager {
         }
     }
 
-    // Each station image is overwritten in place, so the only way to pick up a
-    // new scan is to ask for the same URL with a fresh cache-buster.
-    private scheduleCwaRadarRefresh(sources: { sourceId: string; url: string }[]) {
-        if (this._cwaRadarTimer !== undefined) {
+    // Fetch a radar scan, key its background out, and hand the result to the
+    // source that is already on the map. Repeat on the cadence that product is
+    // republished at, and stop as soon as the layer goes away.
+    private async paintRadar(sourceId: string) {
+        const definition = radarDefinitionFor(sourceId);
+        const map_ = get(this._map);
+        if (!definition || !map_?.getSource(sourceId)) {
+            this.stopRadar(sourceId);
             return;
         }
 
-        this._cwaRadarTimer = setInterval(() => {
-            const map_ = get(this._map);
-            const live = sources.filter(({ sourceId }) => map_?.getSource(sourceId));
-            if (!map_ || live.length === 0) {
-                clearInterval(this._cwaRadarTimer);
-                this._cwaRadarTimer = undefined;
+        try {
+            const image = await fetchTransparentRadar(definition.source);
+            const source = map_.getSource(sourceId) as any;
+            if (!source) {
+                image.revoke();
+                this.stopRadar(sourceId);
                 return;
             }
 
-            const stamp = String(Date.now());
-            for (const { sourceId, url } of live) {
-                const source = map_.getSource(sourceId) as any;
-                source.updateImage?.({ url: url.replace(/t=d+/, `t=${stamp}`) });
-            }
-        }, cwaRadarRefreshInterval);
+            source.updateImage?.({ url: image.url });
+
+            // Only let go of the previous blob once the new one is in place,
+            // or the layer blinks while the image decodes.
+            this._radarImages.get(sourceId)?.revoke();
+            this._radarImages.set(sourceId, image);
+        } catch (error) {
+            // Offline or a bad scan: keep whatever is on the map and try again
+            // on the next tick.
+        }
+    }
+
+    private startRadar(sourceId: string) {
+        if (this._radarTimers.has(sourceId)) {
+            return;
+        }
+
+        const definition = radarDefinitionFor(sourceId);
+        if (!definition) {
+            return;
+        }
+
+        void this.paintRadar(sourceId);
+        this._radarTimers.set(
+            sourceId,
+            setInterval(() => void this.paintRadar(sourceId), definition.refreshMs)
+        );
+    }
+
+    private stopRadar(sourceId: string) {
+        const timer = this._radarTimers.get(sourceId);
+        if (timer !== undefined) {
+            clearInterval(timer);
+            this._radarTimers.delete(sourceId);
+        }
+        this._radarImages.get(sourceId)?.revoke();
+        this._radarImages.delete(sourceId);
     }
     async get(styleInfo: StyleSpecification | string): Promise<StyleSpecification> {
         if (typeof styleInfo === 'string') {

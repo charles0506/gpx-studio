@@ -1,6 +1,5 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button';
-    import { Input } from '$lib/components/ui/input';
     import { Label } from '$lib/components/ui/label/index.js';
     import DatePicker from '$lib/components/ui/date-picker/DatePicker.svelte';
     import { CalendarDate, type DateValue } from '@internationalized/date';
@@ -39,9 +38,13 @@
     let startDate: DateValue | undefined = $state(
         new CalendarDate(now.getFullYear(), now.getMonth() + 1, now.getDate())
     );
-    let startTime = $state(
-        `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
-    );
+    // Always 24-hour, whatever the browser locale would have chosen.
+    const hours = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+    const minutes = Array.from({ length: 12 }, (_, i) => String(i * 5).padStart(2, '0'));
+
+    let startHour = $state(String(now.getHours()).padStart(2, '0'));
+    // Round to the nearest five minutes the list actually offers.
+    let startMinute = $state(String(Math.floor(now.getMinutes() / 5) * 5).padStart(2, '0'));
 
     let samples = $derived(sampleRoute($gpxStatistics));
 
@@ -57,9 +60,8 @@
     let totalSeconds = $derived(walkingCurve.at(-1)?.seconds);
 
     function departure(): Date {
-        const [hours, minutes] = startTime.split(':').map((x) => parseInt(x));
         const day = startDate ?? new CalendarDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
-        return new Date(day.year, day.month - 1, day.day, hours, minutes);
+        return new Date(day.year, day.month - 1, day.day, Number(startHour), Number(startMinute));
     }
 
     // Read the moment off the accumulated curve rather than scaling the total
@@ -145,7 +147,25 @@
                     placeholder={i18n._('toolbar.time.pick_date')}
                     class="w-fit grow"
                 />
-                <Input type="time" bind:value={startTime} class="w-fit text-sm" />
+                <select
+                    bind:value={startHour}
+                    class="border rounded-md bg-background text-sm px-1 py-1"
+                    aria-label={i18n._('toolbar.weather.departure')}
+                >
+                    {#each hours as hour}
+                        <option value={hour}>{hour}</option>
+                    {/each}
+                </select>
+                <span class="self-center">:</span>
+                <select
+                    bind:value={startMinute}
+                    class="border rounded-md bg-background text-sm px-1 py-1"
+                    aria-label={i18n._('toolbar.weather.departure')}
+                >
+                    {#each minutes as minute}
+                        <option value={minute}>{minute}</option>
+                    {/each}
+                </select>
             </div>
         </div>
     </div>

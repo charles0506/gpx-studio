@@ -413,7 +413,10 @@
             "taiwan": "Taiwan",
             "rudyMap": "Rudy Map (Taiwan TOPO)",
             "rudyTwmap": "Rudy Map (twmap style)",
-            "cwaRadar": "CWA rain radar (Taiwan)"
+            "cwaRadarNorth": "Rain radar · north (Shulin)",
+            "cwaRadarCentral": "Rain radar · central (Nantun)",
+            "cwaRadarSouth": "Rain radar · south (Linyuan)",
+            "cwaRadarAll": "Rain radar · whole island (10 min)"
         }
     },
     "chart": {

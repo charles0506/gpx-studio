@@ -25,13 +25,41 @@ import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
 import { mode } from 'mode-watcher';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
 import { routeRainfall } from '$lib/weather';
-import { estimateHikingTime } from '$lib/hiking-time';
 
 const { distanceUnits, velocityUnits, temperatureUnits } = settings;
 
 Chart.defaults.font.family =
     'ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji"'; // Tailwind CSS font
 
+// The chart works in display units; the rainfall store is in kilometres.
+function getUnconvertedDistance(value: number, unit: 'metric' | 'imperial' | 'nautical'): number {
+    if (unit === 'imperial') return value * 1.609344;
+    if (unit === 'nautical') return value * 1.852;
+    return value;
+}
+
+function interpolateRainfall(
+    rainfall: { km: number; mm: number; probability: number }[],
+    km: number
+): { mm: number; probability: number } | undefined {
+    if (rainfall.length === 0) return undefined;
+    if (km <= rainfall[0].km) return rainfall[0];
+    if (km >= rainfall[rainfall.length - 1].km) return rainfall[rainfall.length - 1];
+
+    for (let i = 1; i < rainfall.length; i++) {
+        if (rainfall[i].km >= km) {
+            const a = rainfall[i - 1];
+            const b = rainfall[i];
+            const span = b.km - a.km;
+            const t = span > 0 ? (km - a.km) / span : 0;
+            return {
+                mm: a.mm + (b.mm - a.mm) * t,
+                probability: a.probability + (b.probability - a.probability) * t,
+            };
+        }
+    }
+    return rainfall[rainfall.length - 1];
+}
 interface ElevationProfilePoint {
     x: number;
     y: number;
@@ -56,7 +84,6 @@ export class ElevationProfile {
     private _gpxStatistics: Readable<GPXStatisticsGroup>;
     private _slicedGPXStatistics: Writable<[GPXGlobalStatistics, number, number] | undefined>;
     private _hoveredPoint: Writable<Coordinates | null>;
-    private _estimatedSeconds: number | undefined = undefined;
     private _additionalDatasets: Readable<string[]>;
     private _elevationFill: Readable<'slope' | 'surface' | 'highway' | undefined>;
 
@@ -117,12 +144,8 @@ export class ElevationProfile {
                 x: {
                     type: 'linear',
                     ticks: {
-                        // An array renders as stacked lines, so the walking time
-                        // sits under the distance it corresponds to.
                         callback: (value: number | string) => {
-                            const distance = `${(value as number).toFixed(1).replace(/\.0+$/, '')} ${getDistanceUnits()}`;
-                            const elapsed = this.elapsedAt(value as number);
-                            return elapsed === undefined ? distance : [distance, elapsed];
+                            return `${(value as number).toFixed(1).replace(/\.0+$/, '')} ${getDistanceUnits()}`;
                         },
                         align: 'inner',
                         maxRotation: 0,
@@ -507,24 +530,30 @@ export class ElevationProfile {
             yAxisID: 'ypower',
         };
 
+        // The forecast is only sampled every couple of kilometres, but the
+        // tooltip picks the nearest point in each dataset, so a sparse series
+        // would only answer for the few places it happens to hold. Interpolate
+        // onto the elevation series instead, so every point of the route has a
+        // rainfall to report — and draw it as a filled area rather than
+        // thousands of bars.
+        const rainfall = get(routeRainfall);
         this._chart.data.datasets[6] = {
-            type: 'bar',
+            type: 'line',
             label: i18n._('toolbar.weather.rain_amount'),
-            data: get(routeRainfall).map((entry) => ({
-                x: getConvertedDistance(entry.km, units.distance),
-                y: entry.mm,
-                probability: entry.probability,
-            })),
+            data: datasets[0].map((point: any) => {
+                const km = getUnconvertedDistance(point.x, units.distance);
+                const at = interpolateRainfall(rainfall, km);
+                return { x: point.x, y: at?.mm ?? 0, probability: at?.probability };
+            }),
             yAxisID: 'yrain',
             // Higher order draws first, so the rain sits behind the elevation.
             order: 2,
-            backgroundColor: 'rgba(56, 189, 248, 0.45)',
+            backgroundColor: 'rgba(56, 189, 248, 0.35)',
             borderWidth: 0,
-            barPercentage: 1,
-            categoryPercentage: 1,
+            pointRadius: 0,
+            fill: 'start',
+            hidden: rainfall.length === 0,
         } as any;
-
-        this._estimatedSeconds = estimateHikingTime(data);
 
         this._chart.options.scales!.x!['min'] = 0;
         this._chart.options.scales!.x!['max'] = getConvertedDistance(
@@ -544,21 +573,6 @@ export class ElevationProfile {
         }
         this.setVisibility();
         this._chart.update();
-    }
-
-    // Time to walk to a point, spread along the route in proportion to
-    // distance. The estimate is already approximate, so distributing it any
-    // more finely would be false precision.
-    private elapsedAt(distance: number): string | undefined {
-        const total = this._estimatedSeconds;
-        const max = this._chart?.options.scales?.x?.max as number | undefined;
-        if (!total || !max || max <= 0 || distance <= 0) {
-            return undefined;
-        }
-
-        const minutes = Math.round((total * (distance / max)) / 60);
-        const hours = Math.floor(minutes / 60);
-        return hours > 0 ? `${hours}h${String(minutes % 60).padStart(2, '0')}` : `${minutes}min`;
     }
 
     setVisibility() {

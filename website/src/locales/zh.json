@@ -413,7 +413,10 @@
             "taiwan": "台湾",
             "rudyMap": "鲁地图（台湾地形）",
             "rudyTwmap": "鲁地图（twmap 样式）",
-            "cwaRadar": "气象署雷达回波"
+            "cwaRadarNorth": "降水雷达 · 北部（树林）",
+            "cwaRadarCentral": "降水雷达 · 中部（南屯）",
+            "cwaRadarSouth": "降水雷达 · 南部（林园）",
+            "cwaRadarAll": "雷达回波 · 全岛整合（10 分钟）"
         }
     },
     "chart": {

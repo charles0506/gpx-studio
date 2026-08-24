@@ -4,11 +4,11 @@
     import { CloudRain } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { settings } from '$lib/logic/settings';
-    import { cwaRadarOverlay, isRadarOn, withRadar } from './utils';
+    import { activeStation, nextStation, withStation } from './utils';
 
     const { currentOverlays } = settings;
 
-    let enabled = $derived(isRadarOn($currentOverlays));
+    let station = $derived(activeStation($currentOverlays));
 </script>
 
 <CustomControl class="w-[29px] h-[29px] shrink-0">
@@ -16,11 +16,17 @@
         variant="ghost"
         class="w-full h-full border-none rounded-sm"
         side="left"
-        label={i18n._(`layers.label.${cwaRadarOverlay}`)}
+        label={station === undefined
+            ? i18n._('layers.label.cwaRadarAll')
+            : i18n._(`layers.label.${station}`)}
         onclick={() => {
-            $currentOverlays = withRadar($currentOverlays, !enabled);
+            $currentOverlays = withStation($currentOverlays, nextStation(station));
         }}
     >
-        <CloudRain size="22" class="size-5.5" color={enabled ? '#33b5e5' : 'currentColor'} />
+        <CloudRain
+            size="22"
+            class="size-5.5"
+            color={station === undefined ? 'currentColor' : '#33b5e5'}
+        />
     </ButtonWithTooltip>
 </CustomControl>

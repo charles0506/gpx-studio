@@ -9,6 +9,7 @@
     import type { GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
     import type { Readable } from 'svelte/store';
     import { settings } from '$lib/logic/settings';
+    import { estimateHikingTime } from '$lib/hiking-time';
 
     const { velocityUnits } = settings;
 
@@ -28,6 +29,21 @@
     let statistics = $derived(
         $slicedGPXStatistics !== undefined ? $slicedGPXStatistics[0] : $gpxStatistics.global
     );
+
+    // A planned route has no timestamps, so the recorded time is zero and the
+    // walking estimate is the only answer to "how long will this take". When a
+    // stretch is selected the estimate follows it, in proportion to distance.
+    let estimatedSeconds = $derived.by(() => {
+        if (statistics.time.total > 0) {
+            return undefined;
+        }
+        const total = estimateHikingTime($gpxStatistics);
+        if (total === undefined) {
+            return undefined;
+        }
+        const whole = $gpxStatistics.global.distance.total;
+        return whole > 0 ? (total * statistics.distance.total) / whole : total;
+    });
 </script>
 
 <Card.Root
@@ -75,15 +91,20 @@
             {/if}
             {#if panelHeight > 150 || (orientation === 'horizontal' && panelWidth > 620)}
                 <Tooltip
-                    label="{i18n._('quantities.time')} ({i18n._('quantities.moving')} / {i18n._(
-                        'quantities.total'
-                    )})"
+                    label={estimatedSeconds !== undefined
+                        ? i18n._('toolbar.time.estimate.label')
+                        : `${i18n._('quantities.time')} (${i18n._('quantities.moving')} / ${i18n._('quantities.total')})`}
                 >
                     <span class="flex flex-row items-center">
                         <Timer size="16" class="mr-1" />
-                        <WithUnits value={statistics.time.moving} type="time" />
-                        <span class="mx-1">/</span>
-                        <WithUnits value={statistics.time.total} type="time" />
+                        {#if estimatedSeconds !== undefined}
+                            <span class="mr-1">~</span>
+                            <WithUnits value={estimatedSeconds} type="time" />
+                        {:else}
+                            <WithUnits value={statistics.time.moving} type="time" />
+                            <span class="mx-1">/</span>
+                            <WithUnits value={statistics.time.total} type="time" />
+                        {/if}
                     </span>
                 </Tooltip>
             {/if}

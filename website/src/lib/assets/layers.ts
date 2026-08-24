@@ -407,7 +407,38 @@ export const basemaps: { [key: string]: string | StyleSpecification } = {
 };
 
 export const overlays: { [key: string]: string | StyleSpecification } = {
-    cwaRadar: {
+    cwaRadarAll: {
+        version: 8,
+        sources: {
+            cwaRadarAll: {
+                type: 'image',
+                // All seven radars composited by CWA, covering the island in one
+                // image. Republished every ten minutes rather than every ninety
+                // seconds, which is the price of the wider view. Served from S3
+                // with permissive CORS, so no proxy is needed.
+                url: 'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-003.png?t=CWA_RADAR_STAMP',
+                // LongitudeRange 118.0-124.0 and LatitudeRange 20.5-26.5, as the
+                // dataset metadata declares, clockwise from the top left.
+                coordinates: [
+                    [118.0, 26.5],
+                    [124.0, 26.5],
+                    [124.0, 20.5],
+                    [118.0, 20.5],
+                ],
+            },
+        },
+        layers: [
+            {
+                id: 'cwaRadarAll',
+                type: 'raster',
+                source: 'cwaRadarAll',
+                paint: {
+                    'raster-opacity': 0.7,
+                },
+            },
+        ],
+    },
+    cwaRadarNorth: {
         version: 8,
         sources: {
             cwaRadarNorth: {
@@ -424,6 +455,21 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                     [119.9132, 23.6434],
                 ],
             },
+        },
+        layers: [
+            {
+                id: 'cwaRadarNorth',
+                type: 'raster',
+                source: 'cwaRadarNorth',
+                paint: {
+                    'raster-opacity': 0.7,
+                },
+            },
+        ],
+    },
+    cwaRadarCentral: {
+        version: 8,
+        sources: {
             cwaRadarCentral: {
                 type: 'image',
                 // Proxied because www.cwa.gov.tw sends no CORS headers;
@@ -438,6 +484,21 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                     [119.1034, 22.7834],
                 ],
             },
+        },
+        layers: [
+            {
+                id: 'cwaRadarCentral',
+                type: 'raster',
+                source: 'cwaRadarCentral',
+                paint: {
+                    'raster-opacity': 0.7,
+                },
+            },
+        ],
+    },
+    cwaRadarSouth: {
+        version: 8,
+        sources: {
             cwaRadarSouth: {
                 type: 'image',
                 // Proxied because www.cwa.gov.tw sends no CORS headers;
@@ -454,22 +515,6 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
             },
         },
         layers: [
-            {
-                id: 'cwaRadarNorth',
-                type: 'raster',
-                source: 'cwaRadarNorth',
-                paint: {
-                    'raster-opacity': 0.7,
-                },
-            },
-            {
-                id: 'cwaRadarCentral',
-                type: 'raster',
-                source: 'cwaRadarCentral',
-                paint: {
-                    'raster-opacity': 0.7,
-                },
-            },
             {
                 id: 'cwaRadarSouth',
                 type: 'raster',
@@ -1066,7 +1111,10 @@ export const defaultOverlays: LayerTreeType = {
         },
         countries: {
             taiwan: {
-                cwaRadar: false,
+                cwaRadarAll: false,
+                cwaRadarNorth: false,
+                cwaRadarCentral: false,
+                cwaRadarSouth: false,
             },
             france: {
                 ignFrCadastre: false,
@@ -1211,7 +1259,10 @@ export const defaultOverlayTree: LayerTreeType = {
         },
         countries: {
             taiwan: {
-                cwaRadar: true,
+                cwaRadarAll: true,
+                cwaRadarNorth: true,
+                cwaRadarCentral: true,
+                cwaRadarSouth: true,
             },
             france: {
                 ignFrCadastre: false,

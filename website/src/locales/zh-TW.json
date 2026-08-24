@@ -299,6 +299,10 @@
             "gradient": "坡度",
             "time": "時間",
             "attribution": "爬升 60 公尺以上才算一段；中間下降不超過 25 公尺不會拆成兩段。",
+            "climb": "爬升",
+            "climb_screen": "爬坡畫面",
+            "average": "平均",
+            "vertical_speed": "垂直速度",
             "climbed": "已爬",
             "to_go": "還要爬"
         }

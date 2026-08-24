@@ -16,12 +16,14 @@
         Check,
         ChartNoAxesColumn,
         Construction,
+        TrendingUp,
     } from '@lucide/svelte';
     import type { Readable, Writable } from 'svelte/store';
     import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
     import { settings } from '$lib/logic/settings';
     import { i18n } from '$lib/i18n.svelte';
     import { ElevationProfile } from '$lib/components/elevation-profile/elevation-profile';
+    import { showClimbPro } from '$lib/climb-view';
 
     const { velocityUnits } = settings;
 
@@ -70,6 +72,21 @@
     <canvas bind:this={overlay} class="w-full h-full absolute pointer-events-none"></canvas>
     <canvas bind:this={canvas} class="w-full h-full absolute"></canvas>
     {#if showControls}
+        <!-- The climb screen is the one thing here you want while walking, so it
+             gets a button of its own rather than a row in the settings popover. -->
+        <div class="absolute bottom-9 right-11">
+            <ButtonWithTooltip
+                label={i18n._('toolbar.climbs.climb_screen')}
+                variant="outline"
+                side="left"
+                class="w-7 h-7 p-0 flex justify-center opacity-70 hover:opacity-100 transition-opacity duration-300 {$showClimbPro
+                    ? 'bg-accent text-accent-foreground'
+                    : 'bg-background'}"
+                onclick={() => showClimbPro.update((on) => !on)}
+            >
+                <TrendingUp size="18" />
+            </ButtonWithTooltip>
+        </div>
         <div class="absolute bottom-9 right-2.5">
             <Popover.Root>
                 <Popover.Trigger>

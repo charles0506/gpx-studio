@@ -4,31 +4,38 @@
     import {
         climbAt,
         climbGainSoFar,
-        climbProgress,
         findClimbs,
         gradientColour,
         nextClimb,
+        type Climb,
     } from '$lib/climbs';
-    import { livePosition, progressAlongRoute } from '$lib/live-position';
+    import { climbCursorKm, showClimbPro } from '$lib/climb-view';
+    import {
+        livePosition,
+        progressAlongRoute,
+        trackingSince,
+        verticalSpeed,
+    } from '$lib/live-position';
     import { cumulativeHikingTime, secondsAt } from '$lib/hiking-time';
     import { TrendingUp } from '@lucide/svelte';
 
     // Reading the climb should not mean keeping a toolbar panel open on a phone
-    // in the rain, so it rides on the map — but only while there is a position
-    // to place you on the route.
+    // in the rain, so it rides on the map. A fix places you on the route while
+    // walking; at the kitchen table the profile's cursor stands in for one, so
+    // the same screen answers "what is this hill like" before you set off.
     let climbs = $derived(findClimbs($gpxStatistics));
     let progress = $derived(progressAlongRoute($livePosition));
     let walkingCurve = $derived(cumulativeHikingTime($gpxStatistics));
 
-    let current = $derived(progress ? climbAt(climbs, progress.km) : undefined);
-    let upcoming = $derived(progress && !current ? nextClimb(climbs, progress.km) : undefined);
+    let here = $derived(progress?.km ?? ($showClimbPro ? $climbCursorKm : undefined));
+    let current = $derived(here === undefined ? undefined : climbAt(climbs, here));
+    let upcoming = $derived(here !== undefined && !current ? nextClimb(climbs, here) : undefined);
+    let visible = $derived(progress !== undefined || $showClimbPro);
 
-    let here = $derived(progress?.km ?? 0);
-    let done = $derived(current ? climbProgress(current, here) : 0);
-    let gained = $derived(current ? climbGainSoFar(current, here) : 0);
+    let gained = $derived(current && here !== undefined ? climbGainSoFar(current, here) : 0);
 
     let remaining = $derived.by(() => {
-        if (!current) {
+        if (!current || here === undefined) {
             return undefined;
         }
         const from = Math.max(here, current.startKm);
@@ -44,13 +51,47 @@
         };
     });
 
-    // The climb drawn on its own, the way a watch shows it: this hill, not the
-    // whole day.
-    const WIDTH = 168;
-    const HEIGHT = 40;
+    // Metres of ascent per hour, the way a watch reports it. Recomputed on each
+    // fix, since the history behind it is not itself a store.
+    let climbRate = $derived.by(() => {
+        void $livePosition;
+        return verticalSpeed();
+    });
 
-    let shape = $derived.by(() => {
-        const profile = current?.profile ?? [];
+    // The clock only ticks while the geolocate control is tracking.
+    let now = $state(Date.now());
+    $effect(() => {
+        if (!$trackingSince) {
+            return;
+        }
+        now = Date.now();
+        const timer = setInterval(() => (now = Date.now()), 1000);
+        return () => clearInterval(timer);
+    });
+    let elapsed = $derived(
+        $trackingSince
+            ? Math.max(0, Math.floor((now - $trackingSince.getTime()) / 1000))
+            : undefined
+    );
+
+    // The climb drawn on its own, the way a watch shows it: this hill, not the
+    // whole day, and shaded by how steep each part of it is rather than by one
+    // average that hides the wall at the top.
+    const WIDTH = 240;
+    const HEIGHT = 44;
+    // Gradients read off neighbouring samples of a thinned profile are noise;
+    // over a hundred metres they are what the legs feel.
+    const HALF_WINDOW_KM = 0.05;
+
+    type Shape = {
+        bands: { d: string; colour: string }[];
+        line: string;
+        markerX: number;
+        markerY: number;
+    };
+
+    function shapeOf(climb: Climb, at: number): Shape | undefined {
+        const profile = climb.profile;
         if (profile.length < 2) {
             return undefined;
         }
@@ -60,18 +101,59 @@
         const span = Math.max(lastKm - firstKm, 1e-6);
         const elevations = profile.map((p) => p.elevation);
         const low = Math.min(...elevations);
-        const high = Math.max(...elevations);
-        const rise = Math.max(high - low, 1);
+        const rise = Math.max(Math.max(...elevations) - low, 1);
 
         const x = (km: number) => ((km - firstKm) / span) * WIDTH;
-        const y = (elevation: number) => HEIGHT - ((elevation - low) / rise) * (HEIGHT - 4) - 2;
+        const y = (elevation: number) => HEIGHT - ((elevation - low) / rise) * (HEIGHT - 5) - 2;
 
-        const line = profile.map((p) => `${x(p.km).toFixed(1)},${y(p.elevation).toFixed(1)}`);
+        const bands = [];
+        for (let i = 0; i + 1 < profile.length; i += 1) {
+            const middle = (profile[i].km + profile[i + 1].km) / 2;
+            let from = i;
+            let to = i + 1;
+            while (from > 0 && middle - profile[from].km < HALF_WINDOW_KM) from -= 1;
+            while (to < profile.length - 1 && profile[to].km - middle < HALF_WINDOW_KM) to += 1;
+            const run = Math.max((profile[to].km - profile[from].km) * 1000, 1);
+            const gradient = ((profile[to].elevation - profile[from].elevation) / run) * 100;
+
+            const x0 = x(profile[i].km);
+            const x1 = x(profile[i + 1].km);
+            const y0 = y(profile[i].elevation);
+            const y1 = y(profile[i + 1].elevation);
+            bands.push({
+                d: `M${x0.toFixed(1)},${HEIGHT} L${x0.toFixed(1)},${y0.toFixed(1)} L${x1.toFixed(1)},${y1.toFixed(1)} L${x1.toFixed(1)},${HEIGHT} Z`,
+                colour: gradientColour(gradient),
+            });
+        }
+
+        // Where you are, on the climb's own line.
+        const km = Math.min(Math.max(at, firstKm), lastKm);
+        let before = profile[0];
+        let after = profile[profile.length - 1];
+        for (let i = 0; i + 1 < profile.length; i += 1) {
+            if (profile[i].km <= km && km <= profile[i + 1].km) {
+                before = profile[i];
+                after = profile[i + 1];
+                break;
+            }
+        }
+        const between = after.km > before.km ? (km - before.km) / (after.km - before.km) : 0;
+        const elevation = before.elevation + (after.elevation - before.elevation) * between;
+
         return {
-            area: `M0,${HEIGHT} L${line.join(' L')} L${WIDTH},${HEIGHT} Z`,
-            markerX: x(Math.min(Math.max(here, firstKm), lastKm)),
+            bands,
+            line: profile
+                .map(
+                    (p, i) =>
+                        `${i === 0 ? 'M' : 'L'}${x(p.km).toFixed(1)},${y(p.elevation).toFixed(1)}`
+                )
+                .join(' '),
+            markerX: x(km),
+            markerY: y(elevation),
         };
-    });
+    }
+
+    let shape = $derived(current && here !== undefined ? shapeOf(current, here) : undefined);
 
     function minutes(seconds: number | undefined): string {
         if (seconds === undefined) {
@@ -81,61 +163,90 @@
         const hours = Math.floor(total / 60);
         return hours > 0 ? `${hours} h ${total % 60} min` : `${total} min`;
     }
+
+    function clock(seconds: number): string {
+        const hours = Math.floor(seconds / 3600);
+        const minutes = Math.floor((seconds % 3600) / 60);
+        const rest = seconds % 60;
+        const pad = (value: number) => value.toString().padStart(2, '0');
+        return hours > 0 ? `${hours}:${pad(minutes)}:${pad(rest)}` : `${minutes}:${pad(rest)}`;
+    }
 </script>
 
-{#if current && remaining}
+{#if visible && current && remaining}
     {@const colour = gradientColour(current.gradient)}
     <div
         class="absolute top-0 left-1/2 -translate-x-1/2 mt-14 z-20 pointer-events-none w-fit max-w-[92vw]"
     >
-        <div class="bg-background/95 rounded-md shadow-md px-2.5 py-1.5 flex flex-col gap-0.5">
+        <div class="bg-background/95 rounded-md shadow-md px-3 py-1.5 flex flex-col gap-1">
             <div class="flex flex-row items-center gap-2 text-xs text-muted-foreground">
                 <TrendingUp size="14" style="color: {colour}" />
-                <span>{climbs.indexOf(current) + 1}/{climbs.length}</span>
-                <span>{remaining.km.toFixed(2)} km</span>
-                <span>{minutes(remaining.seconds)}</span>
-                <span>{current.gradient}%</span>
+                <span>
+                    {i18n._('toolbar.climbs.climb')}
+                    {climbs.indexOf(current) + 1}/{climbs.length}
+                </span>
+                <span class="grow"></span>
+                {#if elapsed !== undefined}
+                    <span class="tabular-nums">{clock(elapsed)}</span>
+                {/if}
             </div>
 
-            <div class="flex flex-row items-end gap-2">
-                <!-- climbed so far, then the climb itself, then what is left -->
-                <span class="text-lg font-semibold leading-none" style="color: {colour}">
-                    +{gained}
+            <!-- What is left of this climb: how far, and how much up. -->
+            <div class="flex flex-row items-baseline justify-between gap-6">
+                <span class="text-2xl font-semibold leading-none tabular-nums">
+                    {remaining.km.toFixed(2)}<span class="text-sm font-normal ml-0.5">km</span>
                 </span>
+                <span
+                    class="text-2xl font-semibold leading-none tabular-nums"
+                    style="color: {colour}"
+                >
+                    {remaining.gain}<span class="text-sm ml-0.5">↑</span>
+                </span>
+            </div>
 
-                {#if shape}
-                    <svg width={WIDTH} height={HEIGHT} class="shrink-0">
-                        <path d={shape.area} fill={colour} fill-opacity="0.35" />
+            {#if shape}
+                <div class="relative" style="width: {WIDTH}px">
+                    <svg width={WIDTH} height={HEIGHT} class="block">
+                        {#each shape.bands as band}
+                            <path d={band.d} fill={band.colour} fill-opacity="0.75" />
+                        {/each}
                         <path
-                            d={shape.area}
+                            d={shape.line}
                             fill="none"
-                            stroke={colour}
-                            stroke-width="1.5"
+                            stroke="#334155"
+                            stroke-width="1.25"
                             stroke-linejoin="round"
                         />
-                        <line
-                            x1={shape.markerX}
-                            y1="0"
-                            x2={shape.markerX}
-                            y2={HEIGHT}
-                            stroke="#f59e0b"
-                            stroke-width="2"
+                        <circle
+                            cx={shape.markerX}
+                            cy={shape.markerY}
+                            r="4"
+                            fill="#dc2626"
+                            stroke="#ffffff"
+                            stroke-width="1.5"
                         />
-                        <circle cx={shape.markerX} cy="4" r="3" fill="#f59e0b" />
                     </svg>
+                    <span
+                        class="absolute right-1 bottom-0.5 text-[10px] leading-none text-slate-700 bg-white/70 rounded px-1"
+                    >
+                        {i18n._('toolbar.climbs.average')}
+                        {current.gradient}%
+                    </span>
+                </div>
+            {/if}
+
+            <div
+                class="flex flex-row justify-between gap-3 text-[10px] leading-none text-muted-foreground"
+            >
+                <span>{i18n._('toolbar.climbs.climbed')} +{gained} m</span>
+                <span>{minutes(remaining.seconds)}</span>
+                {#if climbRate !== undefined}
+                    <span>{i18n._('toolbar.climbs.vertical_speed')} {climbRate}↑</span>
                 {/if}
-
-                <span class="text-lg font-semibold leading-none">{remaining.gain}</span>
-            </div>
-
-            <div class="flex flex-row justify-between text-[10px] text-muted-foreground">
-                <span>{i18n._('toolbar.climbs.climbed')}</span>
-                <span>{Math.round(done * 100)}%</span>
-                <span>{i18n._('toolbar.climbs.to_go')}</span>
             </div>
         </div>
     </div>
-{:else if upcoming && progress}
+{:else if visible && upcoming && here !== undefined}
     <div
         class="absolute top-0 left-1/2 -translate-x-1/2 mt-14 z-20 pointer-events-none w-fit max-w-[92vw]"
     >
@@ -145,7 +256,7 @@
             <TrendingUp size="16" style="color: {gradientColour(upcoming.gradient)}" />
             <span>
                 {i18n._('toolbar.climbs.next')}
-                {(upcoming.startKm - progress.km).toFixed(2)} km {i18n._('toolbar.climbs.ahead')}
+                {(upcoming.startKm - here).toFixed(2)} km {i18n._('toolbar.climbs.ahead')}
             </span>
             <span>↗ {upcoming.gain} m</span>
             <span>{upcoming.gradient}%</span>

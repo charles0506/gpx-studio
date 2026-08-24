@@ -1,4 +1,10 @@
-import { livePosition } from '$lib/live-position';
+import {
+    clearProgressHistory,
+    livePosition,
+    progressAlongRoute,
+    recordProgress,
+    trackingSince,
+} from '$lib/live-position';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
@@ -120,15 +126,33 @@ export class MapLibreGLMap {
             // prompt, one battery cost, and the dot on the map and the marker on
             // the profile can never disagree.
             geolocateControl.on('geolocate', (event: any) => {
-                livePosition.set({
+                const position = {
                     lat: event.coords.latitude,
                     lon: event.coords.longitude,
                     accuracy: event.coords.accuracy,
                     at: new Date(event.timestamp ?? Date.now()),
-                });
+                };
+                livePosition.set(position);
+
+                // Vertical speed is read from ascent behind you rather than from
+                // the GPS altitude, which wanders by tens of metres while you
+                // stand still.
+                const progress = progressAlongRoute(position);
+                if (progress) {
+                    recordProgress(progress.gain, position.at);
+                }
             });
-            geolocateControl.on('trackuserlocationend', () => livePosition.set(undefined));
-            geolocateControl.on('error', () => livePosition.set(undefined));
+            geolocateControl.on('trackuserlocationstart', () => {
+                trackingSince.set(new Date());
+                clearProgressHistory();
+            });
+            const stopTracking = () => {
+                livePosition.set(undefined);
+                trackingSince.set(undefined);
+                clearProgressHistory();
+            };
+            geolocateControl.on('trackuserlocationend', stopTracking);
+            geolocateControl.on('error', stopTracking);
 
             map.addControl(geolocateControl);
         }

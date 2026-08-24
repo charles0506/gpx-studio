@@ -25,6 +25,7 @@ import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
 import { departureTime, routeRainfall } from '$lib/weather';
 import { livePosition, progressAlongRoute } from '$lib/live-position';
+import { climbCursorKm } from '$lib/climb-view';
 import { findClimbs, gradientColour } from '$lib/climbs';
 import { cumulativeHikingTime, secondsAt, type HikingTimePoint } from '$lib/hiking-time';
 
@@ -65,6 +66,8 @@ function interpolateRainfall(
 interface ElevationProfilePoint {
     x: number;
     y: number;
+    /** Distance along the route in kilometres, before any unit conversion. */
+    km: number;
     time?: Date;
     slope: {
         at: number;
@@ -222,7 +225,9 @@ export class ElevationProfile {
                             } else if (context.datasetIndex === 6) {
                                 const probability = (point as any).probability;
                                 return `${i18n._('toolbar.weather.rain_amount')}: ${point.y.toFixed(1)} mm${
-                                    probability === undefined ? '' : ` (${Math.round(probability)}%)`
+                                    probability === undefined
+                                        ? ''
+                                        : ` (${Math.round(probability)}%)`
                                 }`;
                             }
                         },
@@ -233,6 +238,8 @@ export class ElevationProfile {
 
                             // Drives the marker on the map.
                             this._hoveredPoint.set(this._dragging ? null : point.coordinates);
+                            // And stands in for a GPS fix on the climb screen.
+                            climbCursorKm.set(point.km);
                             let slope = {
                                 at: point.slope.at.toFixed(1),
                                 segment: point.slope.segment.toFixed(1),
@@ -469,6 +476,7 @@ export class ElevationProfile {
         data.forEachTrackPoint((trkpt, distance, speed, slope, index) => {
             datasets[0].push({
                 x: getConvertedDistance(distance, units.distance),
+                km: distance,
                 y: trkpt.ele ? getConvertedElevation(trkpt.ele, units.distance) : 0,
                 time: trkpt.time,
                 slope: slope,
@@ -625,7 +633,7 @@ export class ElevationProfile {
             return;
         }
 
-        const context = this._overlay.getContext("2d");
+        const context = this._overlay.getContext('2d');
         if (!context) {
             return;
         }
@@ -656,7 +664,7 @@ export class ElevationProfile {
             return;
         }
 
-        const context = this._overlay.getContext("2d");
+        const context = this._overlay.getContext('2d');
         if (!context) {
             return;
         }

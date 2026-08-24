@@ -31,8 +31,15 @@
     let loading = $state(false);
     let error: string | undefined = $state(undefined);
 
-    let startDate: DateValue | undefined = $state(undefined);
-    let startTime = $state('06:00');
+    // Default to now: the common case is checking what the next few hours hold,
+    // not planning a departure at dawn some other day.
+    const now = new Date();
+    let startDate: DateValue | undefined = $state(
+        new CalendarDate(now.getFullYear(), now.getMonth() + 1, now.getDate())
+    );
+    let startTime = $state(
+        `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+    );
 
     let samples = $derived(sampleRoute($gpxStatistics));
     let hasRoute = $derived(samples.length > 0);
@@ -41,12 +48,9 @@
     let totalKm = $derived(samples.length > 0 ? samples[samples.length - 1].at : 0);
 
     function departure(): Date {
-        const now = new Date();
         const [hours, minutes] = startTime.split(':').map((x) => parseInt(x));
-        if (startDate) {
-            return new Date(startDate.year, startDate.month - 1, startDate.day, hours, minutes);
-        }
-        return new Date(now.getFullYear(), now.getMonth(), now.getDate(), hours, minutes);
+        const day = startDate ?? new CalendarDate(now.getFullYear(), now.getMonth() + 1, now.getDate());
+        return new Date(day.year, day.month - 1, day.day, hours, minutes);
     }
 
     // Walking time is spent unevenly, but the estimate is already an

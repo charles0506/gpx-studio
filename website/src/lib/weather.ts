@@ -1,4 +1,4 @@
-import type { GPXStatistics } from 'gpx';
+import type { GPXStatisticsGroup } from 'gpx';
 
 export type WeatherStation = {
     name: string;
@@ -42,31 +42,41 @@ export function isInTaiwan(lat: number, lon: number): boolean {
  * so the spacing widens on a long route rather than dropping the tail.
  */
 export function sampleRoute(
-    statistics: GPXStatistics,
+    statistics: GPXStatisticsGroup | undefined,
     spacingKm: number = 5,
     maxPoints: number = 12
 ): { at: number; lat: number; lon: number }[] {
-    const data = statistics?.local?.data;
-    const points = statistics?.local?.points;
-    if (!data || !points || data.length === 0) {
+    if (!statistics?.forEachTrackPoint) {
         return [];
     }
 
-    const total = data[data.length - 1].distance.total;
-    const spacing = Math.max(spacingKm, total / (maxPoints - 1 || 1));
+    // One pass to learn the length, a second to pick the samples. Walking the
+    // points twice is cheaper than building an array of every one of them.
+    let total = 0;
+    let count = 0;
+    statistics.forEachTrackPoint((_point, distance) => {
+        total = distance;
+        count++;
+    });
+    if (count === 0) {
+        return [];
+    }
+
+    const spacing = Math.max(spacingKm, total / Math.max(maxPoints - 1, 1));
 
     const sampled: { at: number; lat: number; lon: number }[] = [];
     let next = 0;
-    for (let i = 0; i < data.length; i++) {
-        const at = data[i].distance.total;
-        if (at + 1e-9 >= next || i === data.length - 1) {
-            const coordinates = points[i]?.getCoordinates?.();
+    let index = 0;
+    statistics.forEachTrackPoint((point, distance) => {
+        index++;
+        if (distance + 1e-9 >= next || index === count) {
+            const coordinates = point.getCoordinates();
             if (coordinates) {
-                sampled.push({ at, lat: coordinates.lat, lon: coordinates.lon });
+                sampled.push({ at: distance, lat: coordinates.lat, lon: coordinates.lon });
             }
-            next = at + spacing;
+            next = distance + spacing;
         }
-    }
+    });
 
     return sampled;
 }

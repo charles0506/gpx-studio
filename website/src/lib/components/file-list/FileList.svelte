@@ -43,7 +43,15 @@
 </script>
 
 <ScrollArea
-    class="shrink-0 {orientation === 'vertical' ? 'p-0 pr-3' : 'h-10 px-1'}"
+    class="shrink-0 {orientation === 'vertical'
+        ? 'p-0 pr-3'
+        : // The strip sits inside a pointer-events-none overlay so the map stays
+          // usable around it, and until now only the file chips themselves took
+          // pointer events back. There was therefore nothing to grab to scroll
+          // the row: on a phone, any file past the edge of the screen could not
+          // be reached. touch-pan-x keeps the gesture a scroll rather than
+          // letting it start a drag.
+          'h-10 px-1 pointer-events-auto touch-pan-x'}"
     {orientation}
     scrollbarXClasses={orientation === 'vertical' ? '' : 'h-1.5'}
     scrollbarYClasses={orientation === 'vertical' ? '' : ''}

@@ -8,6 +8,7 @@
     import Toolbar from '$lib/components/toolbar/Toolbar.svelte';
     import StreetViewControl from '$lib/components/map/street-view-control/StreetViewControl.svelte';
     import RadarControl from '$lib/components/map/radar-control/RadarControl.svelte';
+    import ClimbControl from '$lib/components/map/climb-control/ClimbControl.svelte';
     import ClimbBanner from '$lib/components/map/ClimbBanner.svelte';
     import LayerControl from '$lib/components/map/layer-control/LayerControl.svelte';
     import CoordinatesPopup from '$lib/components/map/CoordinatesPopup.svelte';
@@ -41,9 +42,7 @@
     // the panel and the profile is left with about a hundred pixels to draw a
     // mountain in. Give it enough to be read; the resizer can still take it back.
     let panelHeight = $derived(
-        bottomPanelOrientation === 'vertical'
-            ? Math.max($bottomPanelSize, 240)
-            : $bottomPanelSize
+        bottomPanelOrientation === 'vertical' ? Math.max($bottomPanelSize, 240) : $bottomPanelSize
     );
 
     onMount(async () => {
@@ -125,6 +124,7 @@
             <Map class="h-full {$treeFileView ? '' : 'horizontal'}" />
             <ClimbBanner />
             <StreetViewControl />
+            <ClimbControl />
             <RadarControl />
             <LayerControl />
             <GPXLayers />

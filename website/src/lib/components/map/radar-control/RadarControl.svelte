@@ -4,12 +4,12 @@
     import { CloudRain } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { settings } from '$lib/logic/settings';
-    import { untrack } from 'svelte';
+    import { onMount } from 'svelte';
     import {
         activeStation,
-        enforceSingleRadar,
         rememberedStation,
         rememberStation,
+        watchRadarExclusivity,
         withStation,
     } from './utils';
 
@@ -17,28 +17,13 @@
 
     let station = $derived(activeStation($currentOverlays));
 
-    // The layer panel is free to tick a second view; this puts it back to one.
-    //
-    // The previous tree is deliberately a plain variable rather than $state: the
-    // effect both reads and writes it, and a reactive one would retrigger the
-    // effect on every write, which locked the whole map control column up.
-    let previousOverlays = $currentOverlays;
-    $effect(() => {
-        const overlays = $currentOverlays;
-        const corrected = untrack(() => enforceSingleRadar(previousOverlays, overlays));
-        previousOverlays = corrected ?? overlays;
-        if (corrected) {
-            $currentOverlays = corrected;
-        }
-    });
-
-    // Whatever is on gets remembered, so hiding and showing again comes back to
-    // the same view rather than to a default.
-    $effect(() => {
-        if (station !== undefined) {
-            rememberStation(station);
-        }
-    });
+    // Deliberately no `$effect` in this component. The overlay store round-trips
+    // through IndexedDB, so it re-emits a new object after every write; an
+    // effect reading it and touching anything in response kept retriggering
+    // until Svelte's update-depth guard fired, and that guard tears down the
+    // surrounding component — which is what left the whole control column
+    // unclickable. Remembering the choice at click time needs no effect at all.
+    onMount(() => watchRadarExclusivity());
 </script>
 
 <CustomControl class="w-[29px] h-[29px] shrink-0">
@@ -48,10 +33,12 @@
         side="left"
         label={i18n._(`layers.label.${station ?? rememberedStation()}`)}
         onclick={() => {
-            $currentOverlays = withStation(
-                $currentOverlays,
-                station === undefined ? rememberedStation() : undefined
-            );
+            if (station === undefined) {
+                $currentOverlays = withStation($currentOverlays, rememberedStation());
+            } else {
+                rememberStation(station);
+                $currentOverlays = withStation($currentOverlays, undefined);
+            }
         }}
     >
         <CloudRain

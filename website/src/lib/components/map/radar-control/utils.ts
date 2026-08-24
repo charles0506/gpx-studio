@@ -1,4 +1,5 @@
 import type { LayerTreeType } from '$lib/assets/layers';
+import { settings } from '$lib/logic/settings';
 
 // One overlay per radar view. Drawing several at once made them overlap into a
 // mess, so exactly one is ever shown. Which one is chosen in the layer panel;
@@ -79,26 +80,36 @@ export function rememberStation(station: RadarStation): void {
 /**
  * Keep at most one radar view on. The layer panel renders the whole overlay
  * tree with checkboxes, so nothing there stops two views being ticked at once —
- * and two of these images drawn together are unreadable. Rather than teach the
- * panel about exclusive groups, drop the older selection whenever a second one
- * appears.
+ * and two of these images drawn together are unreadable.
+ *
+ * This deliberately watches the store rather than living in a component
+ * `$effect`. An effect that both reads and writes the overlay tree trips
+ * Svelte's update-depth guard: the store round-trips through IndexedDB, so
+ * every write comes back as a new object and counts as another change, and
+ * once the guard fires it tears down the surrounding component — which is what
+ * left the whole map control column unclickable.
  */
-export function enforceSingleRadar(
-    previous: LayerTreeType | undefined,
-    next: LayerTreeType | undefined
-): LayerTreeType | undefined {
-    const group = leaf(next);
-    if (!group) {
-        return undefined;
-    }
+export function watchRadarExclusivity(): () => void {
+    let previous: LayerTreeType | undefined = undefined;
 
-    const on = radarStations.filter((station) => group[station] === true);
-    if (on.length < 2) {
-        return undefined;
-    }
+    return settings.currentOverlays.subscribe((tree) => {
+        const group = leaf(tree);
+        if (!group) {
+            previous = tree;
+            return;
+        }
 
-    // Whichever was not on a moment ago is the one just ticked.
-    const before = leaf(previous);
-    const added = on.find((station) => before?.[station] !== true) ?? on[on.length - 1];
-    return withStation(next, added);
+        const on = radarStations.filter((station) => group[station] === true);
+        if (on.length < 2) {
+            previous = tree;
+            return;
+        }
+
+        // Whichever was not on a moment ago is the one just ticked.
+        const before = leaf(previous);
+        const added = on.find((station) => before?.[station] !== true) ?? on[on.length - 1];
+        const corrected = withStation(tree, added);
+        previous = corrected;
+        settings.currentOverlays.set(corrected);
+    });
 }

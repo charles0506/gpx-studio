@@ -67,7 +67,17 @@ sw.addEventListener('activate', (event) => {
     );
 });
 
+// Listing the cache is itself expensive, so this runs once in a while rather
+// than after every tile.
+const TRIM_EVERY = 100;
+let putsSinceTrim = 0;
+
 async function trimTileCache() {
+    if (++putsSinceTrim < TRIM_EVERY) {
+        return;
+    }
+    putsSinceTrim = 0;
+
     const cache = await caches.open(TILE_CACHE);
     const keys = await cache.keys();
     if (keys.length <= MAX_TILE_ENTRIES) {
@@ -137,6 +147,13 @@ sw.addEventListener('fetch', (event) => {
     }
 
     if (url.origin === sw.location.origin) {
+        // The Functions are live data: a cached forecast is wrong, a cached
+        // workspace hands back what another device has already replaced, and
+        // the radar's cache-buster would fill the cache with a fresh two
+        // megabytes every ninety seconds, never to be evicted.
+        if (url.pathname.startsWith('/api/')) {
+            return;
+        }
         event.respondWith(handleAppAsset(request, url));
     }
 });

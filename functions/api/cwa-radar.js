@@ -9,10 +9,16 @@
 // which is too slow to watch a squall line approach.
 // One image per radar site. Together the three 150 km circles cover the island;
 // the northern one alone leaves anyone hiking in the south looking at a blank.
+//
+// CWA publishes each at 3600 px and at 1000 px. The larger one is 2.5 MB and is
+// refetched every ninety seconds while the layer is on — around 100 MB an hour,
+// which is not a thing to do to someone on mobile data halfway up a ridge. At
+// 1000 px the image is a fifth of the size and still finer than the screen at
+// any zoom the radar is useful at.
 const PRODUCTS = {
-    north: 'CV1_RCSL_3600', // 樹林
-    central: 'CV1_RCNT_3600', // 南屯
-    south: 'CV1_RCLY_3600', // 林園
+    north: 'CV1_RCSL_1000', // 樹林
+    central: 'CV1_RCNT_1000', // 南屯
+    south: 'CV1_RCLY_1000', // 林園
 };
 
 // Shorter than the publishing interval, so a new scan is never more than a

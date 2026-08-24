@@ -111,33 +111,10 @@
             })
             .filter((entry) => entry !== undefined);
 
-        if (atSamples.length < 2) {
-            $routeRainfall = atSamples;
-            return;
-        }
-
-        // The forecast is only asked for every couple of kilometres, but a bar
-        // every couple of kilometres reads as three lonely spikes rather than as
-        // weather. Fill in between them so the profile carries a continuous band.
-        const step = 0.25;
-        const filled: typeof atSamples = [];
-        for (let km = atSamples[0].km; km <= atSamples[atSamples.length - 1].km + 1e-9; km += step) {
-            let next = atSamples.findIndex((entry) => entry.km >= km);
-            if (next <= 0) {
-                filled.push({ ...atSamples[Math.max(next, 0)], km });
-                continue;
-            }
-            const a = atSamples[next - 1];
-            const b = atSamples[next];
-            const span = b.km - a.km;
-            const t = span > 0 ? (km - a.km) / span : 0;
-            filled.push({
-                km,
-                mm: a.mm + (b.mm - a.mm) * t,
-                probability: a.probability + (b.probability - a.probability) * t,
-            });
-        }
-        $routeRainfall = filled;
+        // The elevation profile interpolates onto its own points, so filling in
+        // between the samples here would only make it interpolate an already
+        // interpolated series.
+        $routeRainfall = atSamples;
     }
 
     function round(value: number | undefined, digits = 0): string {

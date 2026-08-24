@@ -18,6 +18,7 @@ import type { Component } from 'svelte';
 
 export const guides: Record<string, string[]> = {
     'getting-started': [],
+    'this-site': [],
     menu: ['file', 'edit', 'view', 'settings'],
     'files-and-stats': [],
     toolbar: [
@@ -39,6 +40,7 @@ export const guides: Record<string, string[]> = {
 
 export const guideIcons: Record<string, string | Component<IconProps>> = {
     'getting-started': '🚀',
+    'this-site': '🏔',
     menu: '📂 ⚙️',
     file: File,
     edit: FilePen,

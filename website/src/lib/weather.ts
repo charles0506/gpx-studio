@@ -13,6 +13,11 @@ export type RainfallAlongRoute = {
 // rain shows up under the climb it will fall on.
 export const routeRainfall = writable<RainfallAlongRoute[]>([]);
 
+// Set by the weather tool. While it holds a time, the elevation profile labels
+// its axis with the hour each point is reached rather than with the distance
+// alone.
+export const departureTime = writable<Date | undefined>(undefined);
+
 export type WeatherStation = {
     name: string;
     county?: string;

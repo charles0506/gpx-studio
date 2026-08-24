@@ -11,6 +11,7 @@
         currentSlot,
         fetchWeather,
         isInTaiwan,
+        departureTime,
         routeRainfall,
         sampleRoute,
         type WeatherPoint,
@@ -48,6 +49,7 @@
         // Changing the selection invalidates whatever was drawn for the old one.
         void $gpxStatistics;
         $routeRainfall = [];
+        $departureTime = undefined;
     });
     let hasRoute = $derived(samples.length > 0);
     let inTaiwan = $derived(samples.some((s) => isInTaiwan(s.lat, s.lon)));
@@ -78,6 +80,7 @@
             observations = taiwanData;
             forecasts = hourly;
             publishRainfall(hourly);
+            $departureTime = departure();
         } catch (e) {
             error = e instanceof Error ? e.message : String(e);
             forecasts = [];

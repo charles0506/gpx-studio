@@ -1,0 +1,75 @@
+---
+title: Additions on this site
+---
+
+<script>
+    import { CloudRain, RefreshCw } from '@lucide/svelte';
+    import DocsNote from '$lib/components/docs/DocsNote.svelte';
+</script>
+
+# 🏔 { title }
+
+This is a self-hosted copy of [gpx.studio](https://gpx.studio), adjusted for hiking in Taiwan.
+
+<DocsNote>
+    The upstream tile and routing servers only answer requests from gpx.studio, so this site uses public sources throughout: OpenFreeMap for the basemaps, Mapterhorn for elevation and terrain, BRouter for routing, and Overpass for points of interest.
+</DocsNote>
+
+## Layers
+
+**Rudy Map** (layer menu, under Countries, Taiwan). The topographic map Taiwanese hikers use, showing trails, survey markers, huts and distances. A twmap-styled variant is available too.
+
+## <CloudRain size="24" class="inline-block" style="margin-bottom: 5px" /> Rain radar
+
+The cloud button on the right of the map cycles through:
+
+1. **Off**
+2. **Whole island** — the Central Weather Administration composite of seven radars, refreshed every 10 minutes
+3. **North (Shulin)**
+4. **Central (Nantun)**
+5. **South (Linyuan)**
+
+The last three are rain radars, each covering 150 km around its station and refreshed **every 90 seconds**, which is what you want when watching a squall line approach. Only one is ever drawn, since overlapping them turns the map to mush.
+
+## Weather along the route
+
+The cloud icon in the toolbar. Pick a track, set a departure time, and the tool reports:
+
+- a sample roughly every 2 km along the route
+- the **arrival time** at each, from the walking estimate
+- temperature, chance of rain and rainfall for that hour
+- a 24-hour rain chart and the total rainfall expected while walking
+
+After a lookup the **elevation profile carries a blue rain band**, readable anywhere along the route rather than only at the sampled points.
+
+Forecasts come from Open-Meteo. Inside Taiwan the nearest automatic weather station is reported alongside, from Central Weather Administration data.
+
+## Estimated walking time
+
+Shown in the statistics panel. A planned route has no timestamps, so the recorded time is replaced by an estimate from Tobler's hiking function, prefixed with `~`.
+
+Slope is taken into account: uphill is slower, a gentle descent is fastest. The default fitness factor of 0.7 reflects a real mountain trail with roots, steps and the occasional rope. The factor can be adjusted in the time tool, and the estimate applied as real timestamps.
+
+Selecting a stretch on the profile narrows the estimate to that stretch.
+
+## Offline maps
+
+Panning and zooming a route at home keeps those tiles on the device, so the map still works where there is no signal. The application itself is cached too, so it loads offline.
+
+<DocsNote>
+    Only what you actually looked at is cached, at the zoom levels you looked at it. Browse along the route before you leave.
+</DocsNote>
+
+## <RefreshCw size="24" class="inline-block" style="margin-bottom: 5px" /> Sync
+
+**File, then Sync**. With the passphrase entered, upload everything currently open, or download it on another device.
+
+There are four separate workspaces, each of which can be named — names are kept on the device. All four share the one passphrase.
+
+<DocsNote type="warning">
+    Upload replaces what is stored and download replaces what is open. There is no merge, so check for unsaved changes before downloading.
+</DocsNote>
+
+## Interface language
+
+Traditional Chinese as used in Taiwan is the default. Other languages are available from the settings menu.

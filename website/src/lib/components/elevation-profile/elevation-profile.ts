@@ -24,7 +24,8 @@ import { get, type Readable, type Writable } from 'svelte/store';
 import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
 import { mode } from 'mode-watcher';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
-import { routeRainfall } from '$lib/weather';
+import { departureTime, routeRainfall } from '$lib/weather';
+import { estimateHikingTime } from '$lib/hiking-time';
 
 const { distanceUnits, velocityUnits, temperatureUnits } = settings;
 
@@ -84,6 +85,7 @@ export class ElevationProfile {
     private _gpxStatistics: Readable<GPXStatisticsGroup>;
     private _slicedGPXStatistics: Writable<[GPXGlobalStatistics, number, number] | undefined>;
     private _hoveredPoint: Writable<Coordinates | null>;
+    private _estimatedSeconds: number | undefined = undefined;
     private _additionalDatasets: Readable<string[]>;
     private _elevationFill: Readable<'slope' | 'surface' | 'highway' | undefined>;
 
@@ -126,6 +128,9 @@ export class ElevationProfile {
             routeRainfall.subscribe(() => {
                 this.updateData();
             });
+            departureTime.subscribe(() => {
+                this.updateData();
+            });
             this._additionalDatasets.subscribe(() => {
                 this.updateDataVisibility();
             });
@@ -144,8 +149,12 @@ export class ElevationProfile {
                 x: {
                     type: 'linear',
                     ticks: {
+                        // With a departure time set, the axis answers when as
+                        // well as how far.
                         callback: (value: number | string) => {
-                            return `${(value as number).toFixed(1).replace(/\.0+$/, '')} ${getDistanceUnits()}`;
+                            const distance = `${(value as number).toFixed(1).replace(/\.0+$/, '')} ${getDistanceUnits()}`;
+                            const clock = this.clockAt(value as number);
+                            return clock === undefined ? distance : [distance, clock];
                         },
                         align: 'inner',
                         maxRotation: 0,
@@ -555,6 +564,8 @@ export class ElevationProfile {
             hidden: rainfall.length === 0,
         } as any;
 
+        this._estimatedSeconds = estimateHikingTime(data);
+
         this._chart.options.scales!.x!['min'] = 0;
         this._chart.options.scales!.x!['max'] = getConvertedDistance(
             data.global.distance.total,
@@ -573,6 +584,20 @@ export class ElevationProfile {
         }
         this.setVisibility();
         this._chart.update();
+    }
+
+    // The hour a point is reached, given a departure time and the walking
+    // estimate spread along the route in proportion to distance.
+    private clockAt(distance: number): string | undefined {
+        const start = get(departureTime);
+        const total = this._estimatedSeconds;
+        const max = this._chart?.options.scales?.x?.max as number | undefined;
+        if (!start || !total || !max || max <= 0) {
+            return undefined;
+        }
+
+        const at = new Date(start.getTime() + total * (distance / max) * 1000);
+        return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
     }
 
     setVisibility() {

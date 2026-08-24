@@ -3,7 +3,7 @@
     import LanguageSelect from '$lib/components/LanguageSelect.svelte';
     import ModeSwitch from '$lib/components/ModeSwitch.svelte';
     import Logo from '$lib/components/Logo.svelte';
-    import { AtSign, BookOpenText, Heart, House, Map } from '@lucide/svelte';
+    import { AtSign, BookOpenText, House, Map } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { getURLForLanguage } from '$lib/utils';
 </script>
@@ -86,15 +86,6 @@
             </div>
             <div class="flex flex-col items-start gap-1">
                 <span class="font-semibold">{i18n._('homepage.contribute')}</span>
-                <Button
-                    variant="link"
-                    class="h-6 px-0 has-[>svg]:px-0 text-muted-foreground"
-                    href="https://opencollective.com/gpxstudio"
-                    target="_blank"
-                >
-                    <Heart size="16" />
-                    {i18n._('menu.donate')}
-                </Button>
                 <Button
                     variant="link"
                     class="h-6 px-0 has-[>svg]:px-0 text-muted-foreground"

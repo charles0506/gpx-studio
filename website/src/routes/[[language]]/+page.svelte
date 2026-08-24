@@ -5,7 +5,6 @@
     import Routing from '$lib/components/toolbar/tools/routing/Routing.svelte';
     import {
         BookOpenText,
-        Heart,
         HeartHandshake,
         ChartArea,
         Map,
@@ -214,15 +213,6 @@
             <p class="md:max-w-3/4">{i18n._('homepage.community_description')}</p>
             <HeartHandshake size="80" class="mt-6 self-center" />
             <div class="flex flex-row flex-wrap gap-x-4 gap-y-1.5 justify-center mt-6">
-                <Button
-                    variant="outline"
-                    href="https://opencollective.com/gpxstudio"
-                    target="_blank"
-                    class="text-support py-1.5 text-base max-w-full h-auto whitespace-normal"
-                >
-                    <span>{i18n._('homepage.support_button')}</span>
-                    <Heart size="16" fill="var(--support)" color="var(--support)" />
-                </Button>
                 <Button
                     variant="outline"
                     href="https://crowdin.com/project/gpxstudio"

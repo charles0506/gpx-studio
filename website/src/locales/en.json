@@ -278,10 +278,15 @@
             "station": "Station",
             "rain_chance": "Rain",
             "conditions": "Conditions",
-            "help": "Samples the route every few kilometres and reports the nearest weather station and the county forecast.",
+            "help": "Shows the forecast for each point of the route at the hour you are expected to reach it.",
             "help_invalid_selection": "Select a track to look up the weather along it.",
-            "help_outside_taiwan": "Only routes inside Taiwan are covered.",
-            "attribution": "Observations and forecast: Central Weather Administration"
+            "help_outside_taiwan": "Outside Taiwan, station observations are unavailable — the forecast still works.",
+            "attribution": "Forecast: Open-Meteo · Observations: Central Weather Administration",
+            "departure": "Departure",
+            "arrival": "At",
+            "rain_amount": "Rain",
+            "next_24h": "Rain over the next 24 hours",
+            "total_rain": "While walking:"
         }
     },
     "layers": {
@@ -408,7 +413,6 @@
             "taiwan": "Taiwan",
             "rudyMap": "Rudy Map (Taiwan TOPO)",
             "rudyTwmap": "Rudy Map (twmap style)",
-            "rainRadar": "Rain radar",
             "cwaRadar": "CWA rain radar (Taiwan)"
         }
     },

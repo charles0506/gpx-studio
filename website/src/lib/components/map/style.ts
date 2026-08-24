@@ -9,13 +9,6 @@ import {
 } from '$lib/assets/layers';
 import { getLayers } from '$lib/components/map/layer-control/utils';
 import { applyCwaRadarStamp, cwaRadarRefreshInterval, cwaRadarSource } from '$lib/cwa-radar';
-import {
-    applyRainviewerPath,
-    getRainviewerPath,
-    rainviewerRefreshInterval,
-    rainviewerPathPlaceholder,
-    styleNeedsRainviewerPath,
-} from '$lib/rainviewer';
 import { i18n } from '$lib/i18n.svelte';
 import type {
     Map,
@@ -55,7 +48,6 @@ const anchorLayers: LayerSpecification[] = Object.values(ANCHOR_LAYER_KEY).map((
 export class StyleManager {
     private _map: Writable<Map | null>;
     private _maptilerKey: string;
-    private _rainviewerTimer: ReturnType<typeof setInterval> | undefined = undefined;
     private _cwaRadarTimer: ReturnType<typeof setInterval> | undefined = undefined;
     private _pastOverlays: Set<string> = new Set();
 
@@ -170,14 +162,6 @@ export class StyleManager {
                         if (cwaRadarUrl !== undefined) {
                             this.scheduleCwaRadarRefresh(cwaRadarSource, cwaRadarUrl);
                         }
-                        if (styleNeedsRainviewerPath(overlayStyle)) {
-                            const path = await getRainviewerPath();
-                            if (path === undefined) {
-                                continue; // radar unreachable, leave the overlay off
-                            }
-                            applyRainviewerPath(overlayStyle, path);
-                            this.scheduleRainviewerRefresh(overlayStyle);
-                        }
                         const opacity = overlayOpacities[overlay];
 
                         for (let sourceId in overlayStyle.sources) {
@@ -247,37 +231,6 @@ export class StyleManager {
             }
             source.updateImage?.({ url: url.replace(/t=d+/, 't=' + Date.now()) });
         }, cwaRadarRefreshInterval);
-    }
-
-    // The radar frame is replaced every ten minutes. Rather than rebuilding the
-    // whole style, point the source that is already on the map at the new frame.
-    private scheduleRainviewerRefresh(overlayStyle: StyleSpecification) {
-        if (this._rainviewerTimer !== undefined) {
-            return;
-        }
-        const sourceId = Object.keys(overlayStyle.sources ?? {})[0];
-        const template = (overlayStyle.sources?.[sourceId] as any)?.tiles?.[0];
-        if (!sourceId || typeof template !== 'string') {
-            return;
-        }
-
-        this._rainviewerTimer = setInterval(async () => {
-            const map_ = get(this._map);
-            if (!map_ || !map_.getSource(sourceId)) {
-                clearInterval(this._rainviewerTimer);
-                this._rainviewerTimer = undefined;
-                return;
-            }
-            const path = await getRainviewerPath();
-            if (path === undefined) {
-                return;
-            }
-            const source = map_.getSource(sourceId) as any;
-            source.setTiles?.([
-                // path has no leading slash, e.g. v2/radar/ecafcf1e222b
-                template.replace(/v2\/radar\/[^/]+/, path),
-            ]);
-        }, rainviewerRefreshInterval);
     }
 
     async get(styleInfo: StyleSpecification | string): Promise<StyleSpecification> {

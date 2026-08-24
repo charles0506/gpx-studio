@@ -278,10 +278,15 @@
             "station": "測站",
             "rain_chance": "降雨",
             "conditions": "天氣",
-            "help": "沿路線每隔數公里取樣，顯示最近測站的即時觀測與該縣市預報。",
+            "help": "依預估行走時間，顯示你抵達路線各點時的天氣預報。",
             "help_invalid_selection": "選擇一條軌跡以查詢沿線天氣。",
-            "help_outside_taiwan": "僅涵蓋台灣範圍內的路線。",
-            "attribution": "觀測與預報資料：中央氣象署"
+            "help_outside_taiwan": "台灣以外沒有測站觀測，但天氣預報仍可使用。",
+            "attribution": "預報：Open-Meteo · 觀測：中央氣象署",
+            "departure": "出發時間",
+            "arrival": "抵達",
+            "rain_amount": "雨量",
+            "next_24h": "未來 24 小時降雨",
+            "total_rain": "行程期間："
         }
     },
     "layers": {
@@ -408,7 +413,6 @@
             "taiwan": "台灣",
             "rudyMap": "魯地圖（台灣地形）",
             "rudyTwmap": "魯地圖（twmap 樣式）",
-            "rainRadar": "降雨雷達",
             "cwaRadar": "氣象署雷達回波"
         }
     },

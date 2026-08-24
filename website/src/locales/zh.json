@@ -278,10 +278,15 @@
             "station": "测站",
             "rain_chance": "降雨",
             "conditions": "天气",
-            "help": "沿路线每隔数公里取样，显示最近测站的实时观测与该县市预报。",
+            "help": "依预估行走时间，显示你抵达路线各点时的天气预报。",
             "help_invalid_selection": "选择一条轨迹以查询沿线天气。",
-            "help_outside_taiwan": "仅涵盖台湾范围内的路线。",
-            "attribution": "观测与预报数据：中央气象署"
+            "help_outside_taiwan": "台湾以外没有测站观测，但天气预报仍可使用。",
+            "attribution": "预报：Open-Meteo · 观测：中央气象署",
+            "departure": "出发时间",
+            "arrival": "抵达",
+            "rain_amount": "雨量",
+            "next_24h": "未来 24 小时降雨",
+            "total_rain": "行程期间："
         }
     },
     "layers": {
@@ -408,7 +413,6 @@
             "taiwan": "台湾",
             "rudyMap": "鲁地图（台湾地形）",
             "rudyTwmap": "鲁地图（twmap 样式）",
-            "rainRadar": "降雨雷达",
             "cwaRadar": "气象署雷达回波"
         }
     },

@@ -4,6 +4,7 @@
     import { CloudRain } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { settings } from '$lib/logic/settings';
+    import { untrack } from 'svelte';
     import {
         activeStation,
         enforceSingleRadar,
@@ -17,10 +18,15 @@
     let station = $derived(activeStation($currentOverlays));
 
     // The layer panel is free to tick a second view; this puts it back to one.
-    let previousOverlays = $state($currentOverlays);
+    //
+    // The previous tree is deliberately a plain variable rather than $state: the
+    // effect both reads and writes it, and a reactive one would retrigger the
+    // effect on every write, which locked the whole map control column up.
+    let previousOverlays = $currentOverlays;
     $effect(() => {
-        const corrected = enforceSingleRadar(previousOverlays, $currentOverlays);
-        previousOverlays = corrected ?? $currentOverlays;
+        const overlays = $currentOverlays;
+        const corrected = untrack(() => enforceSingleRadar(previousOverlays, overlays));
+        previousOverlays = corrected ?? overlays;
         if (corrected) {
             $currentOverlays = corrected;
         }

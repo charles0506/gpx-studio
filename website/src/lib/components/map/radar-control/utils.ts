@@ -4,11 +4,13 @@ import { settings } from '$lib/logic/settings';
 // One overlay per radar view. Drawing several at once made them overlap into a
 // mess, so exactly one is ever shown. Which one is chosen in the layer panel;
 // the map control only shows and hides it.
+// 樹林 leads: it is the rain radar covering the north, where the routes this
+// site is used for mostly are, and the one the button falls back to.
 export const radarStations = [
-    'cwaRadarAll',
     'cwaRadarNorth',
     'cwaRadarCentral',
     'cwaRadarSouth',
+    'cwaRadarAll',
 ] as const;
 export type RadarStation = (typeof radarStations)[number];
 

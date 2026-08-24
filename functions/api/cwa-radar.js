@@ -7,14 +7,28 @@
 // This is the product behind OBS_Radar_rain, refreshed roughly every 90
 // seconds — the plain reflectivity composite only moves every ten minutes,
 // which is too slow to watch a squall line approach.
-const IMAGE_URL = 'https://www.cwa.gov.tw/Data/radar_rain/CV1_RCSL_3600/CV1_RCSL_3600.png';
+// One image per radar site. Together the three 150 km circles cover the island;
+// the northern one alone leaves anyone hiking in the south looking at a blank.
+const PRODUCTS = {
+    north: 'CV1_RCSL_3600', // 樹林
+    central: 'CV1_RCNT_3600', // 南屯
+    south: 'CV1_RCLY_3600', // 林園
+};
 
 // Shorter than the publishing interval, so a new scan is never more than a
 // minute stale, and long enough that panning the map does not refetch 2 MB.
 const CACHE_SECONDS = 60;
 
-export async function onRequestGet() {
-    const upstream = await fetch(IMAGE_URL, {
+export async function onRequestGet({ request }) {
+    const site = new URL(request.url).searchParams.get('site') ?? 'north';
+    const product = PRODUCTS[site];
+    if (!product) {
+        return new Response(`site must be one of ${Object.keys(PRODUCTS).join(', ')}`, {
+            status: 400,
+        });
+    }
+
+    const upstream = await fetch(`https://www.cwa.gov.tw/Data/radar_rain/${product}/${product}.png`, {
         headers: {
             // The site answers 403 to a request without a browser-shaped
             // User-Agent.

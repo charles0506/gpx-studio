@@ -410,28 +410,70 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
     cwaRadar: {
         version: 8,
         sources: {
-            cwaRadar: {
+            cwaRadarNorth: {
                 type: 'image',
-                // Rain radar, refreshed every ~90 seconds, proxied because
-                // www.cwa.gov.tw sends no CORS headers. CWA_RADAR_STAMP becomes a
-                // cache-buster so a new scan is actually picked up.
-                url: '/api/cwa-radar?t=CWA_RADAR_STAMP',
-                // Corners run clockwise from the top left, and match the
-                // LongitudeRange 118.0-124.0 / LatitudeRange 20.5-26.5 the dataset
-                // metadata declares.
+                // Proxied because www.cwa.gov.tw sends no CORS headers;
+                // CWA_RADAR_STAMP becomes a cache-buster so a new scan is
+                // actually picked up.
+                url: '/api/cwa-radar?site=north&t=CWA_RADAR_STAMP',
+                // 150 km around the station, clockwise from the top left.
                 coordinates: [
-                    [118.0, 26.5],
-                    [124.0, 26.5],
-                    [124.0, 20.5],
-                    [118.0, 20.5],
+                    [119.9132, 26.3566],
+                    [122.8868, 26.3566],
+                    [122.8868, 23.6434],
+                    [119.9132, 23.6434],
+                ],
+            },
+            cwaRadarCentral: {
+                type: 'image',
+                // Proxied because www.cwa.gov.tw sends no CORS headers;
+                // CWA_RADAR_STAMP becomes a cache-buster so a new scan is
+                // actually picked up.
+                url: '/api/cwa-radar?site=central&t=CWA_RADAR_STAMP',
+                // 150 km around the station, clockwise from the top left.
+                coordinates: [
+                    [119.1034, 25.4966],
+                    [122.0566, 25.4966],
+                    [122.0566, 22.7834],
+                    [119.1034, 22.7834],
+                ],
+            },
+            cwaRadarSouth: {
+                type: 'image',
+                // Proxied because www.cwa.gov.tw sends no CORS headers;
+                // CWA_RADAR_STAMP becomes a cache-buster so a new scan is
+                // actually picked up.
+                url: '/api/cwa-radar?site=south&t=CWA_RADAR_STAMP',
+                // 150 km around the station, clockwise from the top left.
+                coordinates: [
+                    [118.9212, 23.8866],
+                    [121.8388, 23.8866],
+                    [121.8388, 21.1734],
+                    [118.9212, 21.1734],
                 ],
             },
         },
         layers: [
             {
-                id: 'cwaRadar',
+                id: 'cwaRadarNorth',
                 type: 'raster',
-                source: 'cwaRadar',
+                source: 'cwaRadarNorth',
+                paint: {
+                    'raster-opacity': 0.7,
+                },
+            },
+            {
+                id: 'cwaRadarCentral',
+                type: 'raster',
+                source: 'cwaRadarCentral',
+                paint: {
+                    'raster-opacity': 0.7,
+                },
+            },
+            {
+                id: 'cwaRadarSouth',
+                type: 'raster',
+                source: 'cwaRadarSouth',
                 paint: {
                     'raster-opacity': 0.7,
                 },

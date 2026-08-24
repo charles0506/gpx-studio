@@ -8,7 +8,7 @@ import {
     terrainSources,
 } from '$lib/assets/layers';
 import { getLayers } from '$lib/components/map/layer-control/utils';
-import { applyCwaRadarStamp, cwaRadarRefreshInterval, cwaRadarSource } from '$lib/cwa-radar';
+import { applyCwaRadarStamp, cwaRadarRefreshInterval } from '$lib/cwa-radar';
 import { i18n } from '$lib/i18n.svelte';
 import type {
     Map,
@@ -158,9 +158,14 @@ export class StyleManager {
                     const overlayInfo = custom[overlay]?.value ?? overlays[overlay];
                     try {
                         const overlayStyle = await this.get(overlayInfo);
-                        const cwaRadarUrl = applyCwaRadarStamp(overlayStyle);
-                        if (cwaRadarUrl !== undefined) {
-                            this.scheduleCwaRadarRefresh(cwaRadarSource, cwaRadarUrl);
+                        const stampedSources = applyCwaRadarStamp(overlayStyle);
+                        if (stampedSources.length > 0) {
+                            this.scheduleCwaRadarRefresh(
+                                stampedSources.map((sourceId) => ({
+                                    sourceId,
+                                    url: (overlayStyle.sources![sourceId] as any).url as string,
+                                }))
+                            );
                         }
                         const opacity = overlayOpacities[overlay];
 
@@ -215,24 +220,29 @@ export class StyleManager {
         }
     }
 
-    // The CWA composite lives at a fixed URL that is overwritten in place every
-    // ten minutes, so the only way to pick up a new scan is to defeat the cache.
-    private scheduleCwaRadarRefresh(sourceId: string, url: string) {
+    // Each station image is overwritten in place, so the only way to pick up a
+    // new scan is to ask for the same URL with a fresh cache-buster.
+    private scheduleCwaRadarRefresh(sources: { sourceId: string; url: string }[]) {
         if (this._cwaRadarTimer !== undefined) {
             return;
         }
+
         this._cwaRadarTimer = setInterval(() => {
             const map_ = get(this._map);
-            const source = map_?.getSource(sourceId) as any;
-            if (!source) {
+            const live = sources.filter(({ sourceId }) => map_?.getSource(sourceId));
+            if (!map_ || live.length === 0) {
                 clearInterval(this._cwaRadarTimer);
                 this._cwaRadarTimer = undefined;
                 return;
             }
-            source.updateImage?.({ url: url.replace(/t=d+/, 't=' + Date.now()) });
+
+            const stamp = String(Date.now());
+            for (const { sourceId, url } of live) {
+                const source = map_.getSource(sourceId) as any;
+                source.updateImage?.({ url: url.replace(/t=d+/, `t=${stamp}`) });
+            }
         }, cwaRadarRefreshInterval);
     }
-
     async get(styleInfo: StyleSpecification | string): Promise<StyleSpecification> {
         if (typeof styleInfo === 'string') {
             let styleUrl = (styleInfo as string).replace(maptilerKeyPlaceHolder, this._maptilerKey);

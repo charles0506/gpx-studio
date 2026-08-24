@@ -25,6 +25,7 @@ import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
 import { mode } from 'mode-watcher';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
 import { routeRainfall } from '$lib/weather';
+import { estimateHikingTime } from '$lib/hiking-time';
 
 const { distanceUnits, velocityUnits, temperatureUnits } = settings;
 
@@ -55,6 +56,7 @@ export class ElevationProfile {
     private _gpxStatistics: Readable<GPXStatisticsGroup>;
     private _slicedGPXStatistics: Writable<[GPXGlobalStatistics, number, number] | undefined>;
     private _hoveredPoint: Writable<Coordinates | null>;
+    private _estimatedSeconds: number | undefined = undefined;
     private _additionalDatasets: Readable<string[]>;
     private _elevationFill: Readable<'slope' | 'surface' | 'highway' | undefined>;
 
@@ -115,8 +117,12 @@ export class ElevationProfile {
                 x: {
                     type: 'linear',
                     ticks: {
-                        callback: function (value: number | string) {
-                            return `${(value as number).toFixed(1).replace(/\.0+$/, '')} ${getDistanceUnits()}`;
+                        // An array renders as stacked lines, so the walking time
+                        // sits under the distance it corresponds to.
+                        callback: (value: number | string) => {
+                            const distance = `${(value as number).toFixed(1).replace(/\.0+$/, '')} ${getDistanceUnits()}`;
+                            const elapsed = this.elapsedAt(value as number);
+                            return elapsed === undefined ? distance : [distance, elapsed];
                         },
                         align: 'inner',
                         maxRotation: 0,
@@ -518,6 +524,8 @@ export class ElevationProfile {
             categoryPercentage: 1,
         } as any;
 
+        this._estimatedSeconds = estimateHikingTime(data);
+
         this._chart.options.scales!.x!['min'] = 0;
         this._chart.options.scales!.x!['max'] = getConvertedDistance(
             data.global.distance.total,
@@ -536,6 +544,21 @@ export class ElevationProfile {
         }
         this.setVisibility();
         this._chart.update();
+    }
+
+    // Time to walk to a point, spread along the route in proportion to
+    // distance. The estimate is already approximate, so distributing it any
+    // more finely would be false precision.
+    private elapsedAt(distance: number): string | undefined {
+        const total = this._estimatedSeconds;
+        const max = this._chart?.options.scales?.x?.max as number | undefined;
+        if (!total || !max || max <= 0 || distance <= 0) {
+            return undefined;
+        }
+
+        const minutes = Math.round((total * (distance / max)) / 60);
+        const hours = Math.floor(minutes / 60);
+        return hours > 0 ? `${hours}h${String(minutes % 60).padStart(2, '0')}` : `${minutes}min`;
     }
 
     setVisibility() {

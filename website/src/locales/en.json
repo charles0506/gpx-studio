@@ -584,7 +584,7 @@
     "page_not_found": "page not found",
     "sync": {
         "title": "Sync",
-        "description": "Keep the same routes on every device, through your own Cloudflare R2 bucket.",
+        "description": "Keep the same routes on every device, through your own Cloudflare storage.",
         "passphrase": "Passphrase",
         "passphrase_placeholder": "The passphrase set on the server",
         "upload": "Upload",

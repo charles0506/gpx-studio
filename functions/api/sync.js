@@ -1,13 +1,18 @@
-// Cloudflare Pages Function: keep one workspace of GPX files in an R2 bucket so
-// that the same routes are available on the phone and on the desktop.
+// Cloudflare Pages Function: keep one workspace of GPX files in Cloudflare
+// storage so that the same routes are available on the phone and on the
+// desktop.
+//
+// Either binding works. KV needs no payment details, which R2 does even on its
+// free tier, so KV is the one to reach for first; R2 is accepted because it is
+// the better fit if the workspace ever grows past what KV will hold.
 //
 // There are no accounts. A single passphrase, held in the SYNC_SECRET
-// environment variable, guards the bucket — enough for one person syncing their
+// environment variable, guards the store — enough for one person syncing their
 // own devices, and nothing more is pretended.
 const OBJECT_KEY = 'workspace.json';
 
-// R2 charges by request as well as by byte, and a workspace of routes is not
-// large, so the whole thing is stored as one object rather than one per file.
+// The KV value ceiling. A workspace of routes is nowhere near it, and the whole
+// thing is stored as one object rather than one per file.
 const MAX_BYTES = 25 * 1024 * 1024;
 
 function json(body, status = 200) {
@@ -36,8 +41,8 @@ function authorise(request, env) {
     if (!env.SYNC_SECRET) {
         return json({ error: 'SYNC_SECRET is not configured' }, 503);
     }
-    if (!env.SYNC_BUCKET) {
-        return json({ error: 'SYNC_BUCKET is not bound' }, 503);
+    if (!env.SYNC_KV && !env.SYNC_BUCKET) {
+        return json({ error: 'neither SYNC_KV nor SYNC_BUCKET is bound' }, 503);
     }
 
     const header = request.headers.get('Authorization') ?? '';
@@ -52,6 +57,18 @@ function authorise(request, env) {
 export async function onRequestGet({ request, env }) {
     const denied = authorise(request, env);
     if (denied) return denied;
+
+    if (env.SYNC_KV) {
+        const stored = await env.SYNC_KV.get(OBJECT_KEY);
+        return stored === null
+            ? json({ files: [], updatedAt: null })
+            : new Response(stored, {
+                  headers: {
+                      'Content-Type': 'application/json; charset=utf-8',
+                      'Cache-Control': 'no-store',
+                  },
+              });
+    }
 
     const object = await env.SYNC_BUCKET.get(OBJECT_KEY);
     if (!object) {
@@ -91,9 +108,13 @@ export async function onRequestPut({ request, env }) {
         updatedAt: new Date().toISOString(),
     });
 
-    await env.SYNC_BUCKET.put(OBJECT_KEY, stored, {
-        httpMetadata: { contentType: 'application/json; charset=utf-8' },
-    });
+    if (env.SYNC_KV) {
+        await env.SYNC_KV.put(OBJECT_KEY, stored);
+    } else {
+        await env.SYNC_BUCKET.put(OBJECT_KEY, stored, {
+            httpMetadata: { contentType: 'application/json; charset=utf-8' },
+        });
+    }
 
     return json({ files: payload.files.length, updatedAt: JSON.parse(stored).updatedAt });
 }
@@ -102,6 +123,10 @@ export async function onRequestDelete({ request, env }) {
     const denied = authorise(request, env);
     if (denied) return denied;
 
-    await env.SYNC_BUCKET.delete(OBJECT_KEY);
+    if (env.SYNC_KV) {
+        await env.SYNC_KV.delete(OBJECT_KEY);
+    } else {
+        await env.SYNC_BUCKET.delete(OBJECT_KEY);
+    }
     return json({ deleted: true });
 }

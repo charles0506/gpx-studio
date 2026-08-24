@@ -584,7 +584,7 @@
     "page_not_found": "无法找到页面",
     "sync": {
         "title": "同步",
-        "description": "通过你自己的 Cloudflare R2 存储空间，让每台设备看到同一批轨迹。",
+        "description": "通过你自己的 Cloudflare 存储空间，让每台设备看到同一批轨迹。",
         "passphrase": "密钥",
         "passphrase_placeholder": "服务器上设定的密钥",
         "upload": "上传",

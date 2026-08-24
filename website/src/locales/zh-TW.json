@@ -584,7 +584,7 @@
     "page_not_found": "無法找到相關頁面",
     "sync": {
         "title": "同步",
-        "description": "透過你自己的 Cloudflare R2 儲存空間，讓每台裝置看到同一批軌跡。",
+        "description": "透過你自己的 Cloudflare 儲存空間，讓每台裝置看到同一批軌跡。",
         "passphrase": "密鑰",
         "passphrase_placeholder": "伺服器上設定的密鑰",
         "upload": "上傳",

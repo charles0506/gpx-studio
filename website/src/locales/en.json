@@ -397,7 +397,8 @@
             "taiwan": "Taiwan",
             "rudyMap": "Rudy Map (Taiwan TOPO)",
             "rudyTwmap": "Rudy Map (twmap style)",
-            "rainRadar": "Rain radar"
+            "rainRadar": "Rain radar",
+            "cwaRadar": "CWA rain radar (Taiwan)"
         }
     },
     "chart": {

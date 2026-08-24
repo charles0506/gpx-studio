@@ -407,6 +407,37 @@ export const basemaps: { [key: string]: string | StyleSpecification } = {
 };
 
 export const overlays: { [key: string]: string | StyleSpecification } = {
+    cwaRadar: {
+        version: 8,
+        sources: {
+            cwaRadar: {
+                type: 'image',
+                // Composite of the seven Taiwanese radars, published without terrain
+                // shading. The file always holds the latest scan; CWA_RADAR_STAMP is
+                // replaced with a cache-buster so the browser picks up new ones.
+                url: 'https://cwaopendata.s3.ap-northeast-1.amazonaws.com/Observation/O-A0058-003.png?t=CWA_RADAR_STAMP',
+                // Corners run clockwise from the top left, and match the
+                // LongitudeRange 118.0-124.0 / LatitudeRange 20.5-26.5 the dataset
+                // metadata declares.
+                coordinates: [
+                    [118.0, 26.5],
+                    [124.0, 26.5],
+                    [124.0, 20.5],
+                    [118.0, 20.5],
+                ],
+            },
+        },
+        layers: [
+            {
+                id: 'cwaRadar',
+                type: 'raster',
+                source: 'cwaRadar',
+                paint: {
+                    'raster-opacity': 0.7,
+                },
+            },
+        ],
+    },
     rainRadar: {
         version: 8,
         sources: {
@@ -1019,6 +1050,9 @@ export const defaultOverlays: LayerTreeType = {
             rainRadar: false,
         },
         countries: {
+            taiwan: {
+                cwaRadar: false,
+            },
             france: {
                 ignFrCadastre: false,
                 ignSlope: false,
@@ -1162,6 +1196,9 @@ export const defaultOverlayTree: LayerTreeType = {
             rainRadar: true,
         },
         countries: {
+            taiwan: {
+                cwaRadar: true,
+            },
             france: {
                 ignFrCadastre: false,
                 ignSlope: false,

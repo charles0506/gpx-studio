@@ -8,6 +8,7 @@ import {
     terrainSources,
 } from '$lib/assets/layers';
 import { getLayers } from '$lib/components/map/layer-control/utils';
+import { applyCwaRadarStamp, cwaRadarRefreshInterval, cwaRadarSource } from '$lib/cwa-radar';
 import {
     applyRainviewerPath,
     getRainviewerPath,
@@ -55,6 +56,7 @@ export class StyleManager {
     private _map: Writable<Map | null>;
     private _maptilerKey: string;
     private _rainviewerTimer: ReturnType<typeof setInterval> | undefined = undefined;
+    private _cwaRadarTimer: ReturnType<typeof setInterval> | undefined = undefined;
     private _pastOverlays: Set<string> = new Set();
 
     constructor(map: Writable<Map | null>, maptilerKey: string) {
@@ -164,6 +166,10 @@ export class StyleManager {
                     const overlayInfo = custom[overlay]?.value ?? overlays[overlay];
                     try {
                         const overlayStyle = await this.get(overlayInfo);
+                        const cwaRadarUrl = applyCwaRadarStamp(overlayStyle);
+                        if (cwaRadarUrl !== undefined) {
+                            this.scheduleCwaRadarRefresh(cwaRadarSource, cwaRadarUrl);
+                        }
                         if (styleNeedsRainviewerPath(overlayStyle)) {
                             const path = await getRainviewerPath();
                             if (path === undefined) {
@@ -223,6 +229,24 @@ export class StyleManager {
                 map_.setTerrain(null);
             }
         }
+    }
+
+    // The CWA composite lives at a fixed URL that is overwritten in place every
+    // ten minutes, so the only way to pick up a new scan is to defeat the cache.
+    private scheduleCwaRadarRefresh(sourceId: string, url: string) {
+        if (this._cwaRadarTimer !== undefined) {
+            return;
+        }
+        this._cwaRadarTimer = setInterval(() => {
+            const map_ = get(this._map);
+            const source = map_?.getSource(sourceId) as any;
+            if (!source) {
+                clearInterval(this._cwaRadarTimer);
+                this._cwaRadarTimer = undefined;
+                return;
+            }
+            source.updateImage?.({ url: url.replace(/t=d+/, 't=' + Date.now()) });
+        }, cwaRadarRefreshInterval);
     }
 
     // The radar frame is replaced every ten minutes. Rather than rebuilding the

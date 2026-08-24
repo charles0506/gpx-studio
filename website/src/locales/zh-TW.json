@@ -397,7 +397,8 @@
             "taiwan": "台灣",
             "rudyMap": "魯地圖（台灣地形）",
             "rudyTwmap": "魯地圖（twmap 樣式）",
-            "rainRadar": "降雨雷達"
+            "rainRadar": "降雨雷達",
+            "cwaRadar": "氣象署雷達回波"
         }
     },
     "chart": {

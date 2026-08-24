@@ -8,6 +8,7 @@
     import Toolbar from '$lib/components/toolbar/Toolbar.svelte';
     import StreetViewControl from '$lib/components/map/street-view-control/StreetViewControl.svelte';
     import RadarControl from '$lib/components/map/radar-control/RadarControl.svelte';
+    import ClimbBanner from '$lib/components/map/ClimbBanner.svelte';
     import LayerControl from '$lib/components/map/layer-control/LayerControl.svelte';
     import CoordinatesPopup from '$lib/components/map/CoordinatesPopup.svelte';
     import Resizer from '$lib/components/Resizer.svelte';
@@ -122,6 +123,7 @@
                 <Toolbar />
             </div>
             <Map class="h-full {$treeFileView ? '' : 'horizontal'}" />
+            <ClimbBanner />
             <StreetViewControl />
             <RadarControl />
             <LayerControl />

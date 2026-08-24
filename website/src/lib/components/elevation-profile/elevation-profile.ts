@@ -22,7 +22,6 @@ import Chart, {
 } from 'chart.js/auto';
 import { get, type Readable, type Writable } from 'svelte/store';
 import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
-import { mode } from 'mode-watcher';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
 import { departureTime, routeRainfall } from '$lib/weather';
 import { livePosition, progressAlongRoute } from '$lib/live-position';
@@ -163,7 +162,10 @@ export class ElevationProfile {
                         },
                         align: 'inner',
                         maxRotation: 0,
+                        color: '#4b5563',
                     },
+                    grid: { color: 'rgba(0, 0, 0, 0.08)' },
+                    border: { color: 'rgba(0, 0, 0, 0.2)' },
                 },
                 y: {
                     type: 'linear',
@@ -171,7 +173,10 @@ export class ElevationProfile {
                         callback: function (value: number | string) {
                             return getElevationWithUnits(value as number, false);
                         },
+                        color: '#4b5563',
                     },
+                    grid: { color: 'rgba(0, 0, 0, 0.08)' },
+                    border: { color: 'rgba(0, 0, 0, 0.2)' },
                 },
             },
             datasets: {
@@ -750,8 +755,8 @@ export class ElevationProfile {
             // Draw selection rectangle
             let selectionContext = this._overlay.getContext('2d');
             if (selectionContext) {
-                selectionContext.fillStyle = mode.current === 'dark' ? 'white' : 'black';
-                selectionContext.globalAlpha = mode.current === 'dark' ? 0.2 : 0.1;
+                selectionContext.fillStyle = 'black';
+                selectionContext.globalAlpha = 0.1;
                 selectionContext.clearRect(0, 0, this._overlay.width, this._overlay.height);
 
                 const gpxStatistics = get(this._gpxStatistics);

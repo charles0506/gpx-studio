@@ -64,7 +64,9 @@
     });
 </script>
 
-<div class="h-full grow min-w-0 min-h-0 relative">
+<!-- White whatever the theme: the climb bands and the slope colouring are
+     read against it, and they were picked to sit on paper rather than on ink. -->
+<div class="h-full grow min-w-0 min-h-0 relative bg-white rounded-md">
     <canvas bind:this={overlay} class="w-full h-full absolute pointer-events-none"></canvas>
     <canvas bind:this={canvas} class="w-full h-full absolute"></canvas>
     {#if showControls}

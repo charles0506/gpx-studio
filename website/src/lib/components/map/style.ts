@@ -9,7 +9,6 @@ import {
 } from '$lib/assets/layers';
 import { getLayers } from '$lib/components/map/layer-control/utils';
 import { radarDefinitionFor } from '$lib/cwa-radar';
-import { fetchTransparentRadar, type RadarImage } from '$lib/radar-image';
 import { i18n } from '$lib/i18n.svelte';
 import type {
     Map,
@@ -50,7 +49,6 @@ export class StyleManager {
     private _map: Writable<Map | null>;
     private _maptilerKey: string;
     private _radarTimers: Map<string, ReturnType<typeof setInterval>> = new Map();
-    private _radarImages: Map<string, RadarImage> = new Map();
     private _pastOverlays: Set<string> = new Set();
 
     constructor(map: Writable<Map | null>, maptilerKey: string) {
@@ -221,36 +219,18 @@ export class StyleManager {
         }
     }
 
-    // Fetch a radar scan, key its background out, and hand the result to the
-    // source that is already on the map. Repeat on the cadence that product is
-    // republished at, and stop as soon as the layer goes away.
-    private async paintRadar(sourceId: string) {
+    // Each scan overwrites the same file, so a fresh cache-buster is the whole
+    // of the refresh.
+    private paintRadar(sourceId: string) {
         const definition = radarDefinitionFor(sourceId);
         const map_ = get(this._map);
-        if (!definition || !map_?.getSource(sourceId)) {
+        const source = map_?.getSource(sourceId) as any;
+        if (!definition || !source) {
             this.stopRadar(sourceId);
             return;
         }
 
-        try {
-            const image = await fetchTransparentRadar(definition.source);
-            const source = map_.getSource(sourceId) as any;
-            if (!source) {
-                image.revoke();
-                this.stopRadar(sourceId);
-                return;
-            }
-
-            source.updateImage?.({ url: image.url });
-
-            // Only let go of the previous blob once the new one is in place,
-            // or the layer blinks while the image decodes.
-            this._radarImages.get(sourceId)?.revoke();
-            this._radarImages.set(sourceId, image);
-        } catch (error) {
-            // Offline or a bad scan: keep whatever is on the map and try again
-            // on the next tick.
-        }
+        source.updateImage?.({ url: `${definition.source}?t=${Date.now()}` });
     }
 
     private startRadar(sourceId: string) {
@@ -263,10 +243,10 @@ export class StyleManager {
             return;
         }
 
-        void this.paintRadar(sourceId);
+        this.paintRadar(sourceId);
         this._radarTimers.set(
             sourceId,
-            setInterval(() => void this.paintRadar(sourceId), definition.refreshMs)
+            setInterval(() => this.paintRadar(sourceId), definition.refreshMs)
         );
     }
 
@@ -276,8 +256,6 @@ export class StyleManager {
             clearInterval(timer);
             this._radarTimers.delete(sourceId);
         }
-        this._radarImages.get(sourceId)?.revoke();
-        this._radarImages.delete(sourceId);
     }
     async get(styleInfo: StyleSpecification | string): Promise<StyleSpecification> {
         if (typeof styleInfo === 'string') {

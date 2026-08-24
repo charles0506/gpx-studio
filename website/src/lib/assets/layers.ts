@@ -23,7 +23,7 @@ import {
     Toilet,
 } from 'lucide-static';
 import { type RasterDEMSourceSpecification, type StyleSpecification } from 'maplibre-gl';
-import { blankImage } from '$lib/cwa-radar';
+import { radarSourceFor } from '$lib/cwa-radar';
 import ignFrTopo from './custom/ign-fr-topo.json';
 import ignFrPlan from './custom/ign-fr-plan.json';
 import ignFrSatellite from './custom/ign-fr-satellite.json';
@@ -415,7 +415,7 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 type: 'image',
                 // Starts blank: the real scan is fetched, keyed to transparency
                 // and handed over by the style manager. See lib/cwa-radar.ts.
-                url: blankImage,
+                url: radarSourceFor('cwaRadarAll'),
                 // LongitudeRange 118-124 and LatitudeRange 20.5-26.5, as the
                 // dataset metadata declares, clockwise from the top left.
                 coordinates: [
@@ -444,7 +444,7 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 type: 'image',
                 // Starts blank: the real scan is fetched, keyed to transparency
                 // and handed over by the style manager. See lib/cwa-radar.ts.
-                url: blankImage,
+                url: radarSourceFor('cwaRadarNorth'),
                 // 150 km around the station, clockwise from the top left.
                 coordinates: [
                     [119.9132, 26.3566],
@@ -472,7 +472,7 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 type: 'image',
                 // Starts blank: the real scan is fetched, keyed to transparency
                 // and handed over by the style manager. See lib/cwa-radar.ts.
-                url: blankImage,
+                url: radarSourceFor('cwaRadarCentral'),
                 // 150 km around the station, clockwise from the top left.
                 coordinates: [
                     [119.1034, 25.4966],
@@ -500,7 +500,7 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 type: 'image',
                 // Starts blank: the real scan is fetched, keyed to transparency
                 // and handed over by the style manager. See lib/cwa-radar.ts.
-                url: blankImage,
+                url: radarSourceFor('cwaRadarSouth'),
                 // 150 km around the station, clockwise from the top left.
                 coordinates: [
                     [118.9212, 23.8866],

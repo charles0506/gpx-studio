@@ -68,6 +68,12 @@ export class SortableFileList {
                 put: true,
             },
             direction: orientation,
+            // Without this a swipe across the file row starts dragging a file
+            // rather than scrolling, so on a phone anything past the edge of the
+            // screen cannot be reached at all. A press and hold still drags.
+            delay: 250,
+            delayOnTouchOnly: true,
+            touchStartThreshold: 5,
             forceAutoScrollFallback: true,
             multiDrag: true,
             multiDragKey: isMac() ? 'Meta' : 'Ctrl',

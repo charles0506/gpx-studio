@@ -204,9 +204,16 @@ export function climbProgress(climb: Climb, km: number): number {
     return Math.min(1, Math.max(0, (km - climb.startKm) / length));
 }
 
-// Steeper reads hotter, the way Garmin shades its climbs.
+/**
+ * Steeper reads hotter, the way Garmin shades its climbs. The scale runs past
+ * the 15% a road cyclist would call the top of it: these are 古道, where whole
+ * climbs average 30% and a single band would paint every one of them the same
+ * red, so the steps above 15% are what tells a hard climb from a staircase.
+ */
 export function gradientColour(gradient: number): string {
-    if (gradient >= 15) return '#b91c1c';
+    if (gradient >= 35) return '#7f1d1d';
+    if (gradient >= 25) return '#b91c1c';
+    if (gradient >= 15) return '#dc2626';
     if (gradient >= 10) return '#ea580c';
     if (gradient >= 7) return '#f59e0b';
     if (gradient >= 4) return '#eab308';

@@ -88,7 +88,15 @@
         if (!instance) {
             return;
         }
-        const fold = () => (expanded = false);
+        // Following your own position recentres the map on every fix, and that
+        // camera move is a zoom like any other: without the check, the climb
+        // would fold itself away each time the GPS reported in.
+        const fold = (event?: { geolocateSource?: boolean }) => {
+            if (event?.geolocateSource) {
+                return;
+            }
+            expanded = false;
+        };
         instance.on('dragstart', fold);
         instance.on('zoomstart', fold);
         return () => {
@@ -296,19 +304,19 @@
                                 y1={shape.markerY}
                                 x2={width}
                                 y2={shape.markerY}
-                                stroke="#dc2626"
-                                stroke-width="1"
+                                stroke="#ffffff"
+                                stroke-width="1.5"
                                 stroke-dasharray="3 3"
-                                opacity="0.6"
+                                opacity="0.9"
                             />
                         {/if}
                         <circle
                             cx={shape.markerX}
                             cy={shape.markerY}
                             r={expanded ? 5 : 4}
-                            fill="#dc2626"
-                            stroke="#ffffff"
-                            stroke-width="1.5"
+                            fill="#ffffff"
+                            stroke="#0f172a"
+                            stroke-width="2"
                         />
                     </svg>
 
@@ -325,7 +333,7 @@
                             {current.startElevation} m
                         </span>
                         <span
-                            class="absolute text-[10px] leading-none text-white bg-red-600 rounded px-1 -translate-x-1/2 -translate-y-full"
+                            class="absolute text-[10px] leading-none text-white bg-slate-900/85 rounded px-1 -translate-x-1/2 -translate-y-full"
                             style="left: {Math.min(
                                 Math.max(shape.markerX, 24),
                                 width - 24

@@ -36,6 +36,15 @@
         bottomPanelWidth && bottomPanelWidth >= 540 && $elevationProfile ? 'horizontal' : 'vertical'
     );
 
+    // Stacked on a narrow screen, the statistics and the axis labels eat most of
+    // the panel and the profile is left with about a hundred pixels to draw a
+    // mountain in. Give it enough to be read; the resizer can still take it back.
+    let panelHeight = $derived(
+        bottomPanelOrientation === 'vertical'
+            ? Math.max($bottomPanelSize, 240)
+            : $bottomPanelSize
+    );
+
     onMount(async () => {
         settings.connectToDatabase(db);
         fileStateCollection.connectToDatabase(db).then(() => {
@@ -138,7 +147,7 @@
             class="flex {bottomPanelOrientation == 'vertical'
                 ? 'flex-col'
                 : 'flex-row py-2'} gap-1 px-4"
-            style={$elevationProfile ? `height: ${$bottomPanelSize}px` : ''}
+            style={$elevationProfile ? `height: ${panelHeight}px` : ''}
         >
             <GPXStatistics
                 {gpxStatistics}

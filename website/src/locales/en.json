@@ -298,7 +298,7 @@
             "length": "Length",
             "gradient": "Gradient",
             "time": "Time",
-            "attribution": "A climb is counted from 60 m of gain; dips under 25 m do not split one in two.",
+            "attribution": "A climb is counted from 60 m of gain; ground rising slower than 3% is approach rather than climb; dips under 25 m do not split one in two.",
             "climb": "Climb",
             "climb_screen": "Climb screen",
             "average": "avg",

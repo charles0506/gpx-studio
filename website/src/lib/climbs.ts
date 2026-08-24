@@ -36,7 +36,14 @@ type Sample = { km: number; elevation: number };
 // without being counted as two.
 const MINIMUM_GAIN = 60;
 const MAXIMUM_DIP = 25;
-const MINIMUM_GRADIENT = 2;
+/**
+ * Ground rising slower than this is approach, not climb. It is charged against
+ * the ascent as the route is walked, so a kilometre of it costs 30 m: a long
+ * gentle valley road cannot carry a steep finish into the same climb, and the
+ * average gradient a climb reports is never watered down by the flat that led
+ * to it.
+ */
+const APPROACH_GRADIENT = 3;
 
 function categorise(score: number): 1 | 2 | 3 | 4 {
     if (score >= 40000) return 1;
@@ -46,9 +53,16 @@ function categorise(score: number): 1 | 2 | 3 | 4 {
 }
 
 /**
- * Find the climbs on a route. Walks the elevation once, opening a climb when
- * the ground starts rising and closing it when it has fallen far enough that
- * the rise is over rather than merely interrupted.
+ * Find the climbs on a route. Each step of the route scores what it gains less
+ * what a gentle approach would have gained over the same ground, and the climbs
+ * are the stretches where that score runs positive — the largest-sum runs, in
+ * other words, which is Kadane's algorithm with a drawdown rule to close a
+ * climb once the ground has fallen far enough that the rise is over rather than
+ * merely interrupted.
+ *
+ * Trimming the approach matters on a route that drifts uphill for ten
+ * kilometres and then rears up at the end: counted whole it is one climb at
+ * 2%, which describes neither half of it.
  */
 export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] {
     if (!statistics?.forEachTrackPoint) {
@@ -72,8 +86,6 @@ export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] 
     }
 
     const climbs: Climb[] = [];
-    let start = samples[0];
-    let peak = samples[0];
 
     // Enough to keep the shape, few enough to put in an SVG path attribute.
     const MAX_PROFILE_POINTS = 64;
@@ -87,16 +99,13 @@ export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] 
         return Array.from({ length: MAX_PROFILE_POINTS }, (_, i) => within[Math.round(i * step)]);
     };
 
-    const close = (end: Sample) => {
+    const close = (start: Sample, peak: Sample) => {
         const gain = peak.elevation - start.elevation;
         const length = peak.km - start.km;
         if (gain < MINIMUM_GAIN || length <= 0) {
             return;
         }
         const gradient = (gain / (length * 1000)) * 100;
-        if (gradient < MINIMUM_GRADIENT) {
-            return;
-        }
         const score = length * 1000 * gradient;
         climbs.push({
             startKm: start.km,
@@ -111,20 +120,44 @@ export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] 
         });
     };
 
-    for (const sample of samples) {
-        if (sample.elevation >= peak.elevation) {
+    let start = samples[0];
+    // The highest ground since the climb began, which is what a dip is measured
+    // against, and the point the climb is worth the most at, which is where it
+    // ends: they part company when a summit gives way to a level ridge, and it
+    // is the second that a watch calls the top.
+    let peak = samples[0];
+    let top = samples[0];
+    let running = 0;
+    let best = 0;
+
+    for (let i = 1; i < samples.length; i += 1) {
+        const previous = samples[i - 1];
+        const sample = samples[i];
+        const metres = Math.max((sample.km - previous.km) * 1000, 0);
+        running += sample.elevation - previous.elevation - (metres * APPROACH_GRADIENT) / 100;
+
+        if (sample.elevation > peak.elevation) {
             peak = sample;
-            continue;
+        }
+        if (running > best) {
+            best = running;
+            top = sample;
         }
 
-        // Falling. A small dip is part of the climb; a real descent ends it.
-        if (peak.elevation - sample.elevation >= MAXIMUM_DIP) {
-            close(sample);
+        // The climb is over once the ground has fallen away from its high point
+        // — in plain metres, since the approach charge would make a long shallow
+        // dip look like a descent — or once what has been walked no longer
+        // outruns an approach at all.
+        if (running <= 0 || peak.elevation - sample.elevation >= MAXIMUM_DIP) {
+            close(start, top);
+            running = 0;
+            best = 0;
             start = sample;
             peak = sample;
+            top = sample;
         }
     }
-    close(samples[samples.length - 1]);
+    close(start, top);
 
     return climbs;
 }

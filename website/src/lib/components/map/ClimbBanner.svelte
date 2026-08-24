@@ -27,7 +27,9 @@
     let progress = $derived(progressAlongRoute($livePosition));
     let walkingCurve = $derived(cumulativeHikingTime($gpxStatistics));
 
-    let here = $derived(progress?.km ?? ($showClimbPro ? $climbCursorKm : undefined));
+    let here = $derived(
+        progress?.km ?? ($showClimbPro ? ($climbCursorKm ?? climbs[0]?.startKm) : undefined)
+    );
     let current = $derived(here === undefined ? undefined : climbAt(climbs, here));
     let upcoming = $derived(here !== undefined && !current ? nextClimb(climbs, here) : undefined);
     let visible = $derived(progress !== undefined || $showClimbPro);

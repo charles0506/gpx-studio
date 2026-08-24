@@ -454,6 +454,18 @@ export class ElevationProfile {
             endIndex = getIndex(evt);
             if (startIndex === endIndex) {
                 this._slicedGPXStatistics.set(undefined);
+
+                // A tap rather than a drag. There is no hover on a phone, and
+                // the tooltip that feeds the climb screen is disabled while
+                // dragging, so this is the only way a finger can place you on
+                // the route.
+                const data = this._chart?.data.datasets[0]?.data as any[] | undefined;
+                const point =
+                    data?.find((candidate) => candidate?.index === endIndex) ??
+                    (endIndex === undefined ? undefined : data?.[endIndex]);
+                if (typeof point?.km === 'number') {
+                    climbCursorKm.set(point.km);
+                }
             }
         };
         this._canvas.addEventListener('pointerdown', onMouseDown);

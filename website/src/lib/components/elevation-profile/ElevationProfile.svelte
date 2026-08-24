@@ -74,12 +74,12 @@
     {#if showControls}
         <!-- The climb screen is the one thing here you want while walking, so it
              gets a button of its own rather than a row in the settings popover. -->
-        <div class="absolute bottom-9 right-11">
+        <div class="absolute bottom-9 right-[3.25rem] sm:right-11">
             <ButtonWithTooltip
                 label={i18n._('toolbar.climbs.climb_screen')}
                 variant="outline"
                 side="left"
-                class="w-7 h-7 p-0 flex justify-center opacity-70 hover:opacity-100 transition-opacity duration-300 {$showClimbPro
+                class="w-9 h-9 sm:w-7 sm:h-7 p-0 flex justify-center opacity-70 hover:opacity-100 transition-opacity duration-300 {$showClimbPro
                     ? 'bg-accent text-accent-foreground'
                     : 'bg-background'}"
                 onclick={() => showClimbPro.update((on) => !on)}
@@ -94,7 +94,7 @@
                         label={i18n._('chart.settings')}
                         variant="outline"
                         side="left"
-                        class="w-7 h-7 p-0 flex justify-center opacity-70 hover:opacity-100 transition-opacity duration-300 bg-background"
+                        class="w-9 h-9 sm:w-7 sm:h-7 p-0 flex justify-center opacity-70 hover:opacity-100 transition-opacity duration-300 bg-background"
                     >
                         <ChartNoAxesColumn size="18" />
                     </ButtonWithTooltip>

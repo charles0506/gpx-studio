@@ -1,12 +1,12 @@
-// The Central Weather Administration publishes its radar composite as a single
-// PNG at a fixed URL, overwritten in place roughly every ten minutes. Nothing
-// in the URL changes between scans, so a cache-buster is the only way to pick a
+// The Central Weather Administration publishes its rain radar as a single PNG
+// at a fixed URL, overwritten in place every ninety seconds or so. Nothing in
+// the URL changes between scans, so a cache-buster is the only way to pick a
 // new one up — hence the placeholder in the overlay definition.
 export const cwaRadarStampPlaceholder = 'CWA_RADAR_STAMP';
 
 export const cwaRadarSource = 'cwaRadar';
 
-export const cwaRadarRefreshInterval = 5 * 60 * 1000;
+export const cwaRadarRefreshInterval = 90 * 1000;
 
 /**
  * Replace the cache-buster placeholder in an image source, in place. Returns

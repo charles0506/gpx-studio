@@ -581,5 +581,16 @@
     },
     "webgl2_required": "須先啟用 WebGL 2 才能顯示地圖。",
     "enable_webgl2": "學習如何在瀏覽器中啟用 WebGL 2",
-    "page_not_found": "無法找到相關頁面"
+    "page_not_found": "無法找到相關頁面",
+    "sync": {
+        "title": "同步",
+        "description": "透過你自己的 Cloudflare R2 儲存空間，讓每台裝置看到同一批軌跡。",
+        "passphrase": "密鑰",
+        "passphrase_placeholder": "伺服器上設定的密鑰",
+        "upload": "上傳",
+        "download": "下載",
+        "uploaded": "已上傳 {n} 個檔案。",
+        "downloaded": "已載入 {n} 個檔案。",
+        "warning": "上傳會覆蓋雲端內容，下載會覆蓋目前開啟的檔案。不會自動合併。"
+    }
 }

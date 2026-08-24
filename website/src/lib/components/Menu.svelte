@@ -1,4 +1,5 @@
 <script lang="ts">
+    import SyncDialog from '$lib/components/SyncDialog.svelte';
     import * as Menubar from '$lib/components/ui/menubar/index.js';
     import { Button } from '$lib/components/ui/button';
     import Logo from '$lib/components/Logo.svelte';
@@ -43,6 +44,7 @@
         Maximize,
         Maximize2,
         Minimize2,
+        RefreshCw,
     } from '@lucide/svelte';
     import { map } from '$lib/components/map/map';
     import { editMetadata } from '$lib/components/file-list/metadata/utils.svelte';
@@ -122,6 +124,8 @@
         document.addEventListener('fullscreenchange', handler);
         return () => document.removeEventListener('fullscreenchange', handler);
     });
+
+    let syncOpen = $state(false);
 </script>
 
 <div class="absolute md:top-2 left-0 right-0 z-20 flex flex-row justify-center pointer-events-none">
@@ -192,6 +196,11 @@
                         <Download size="16" />
                         {i18n._('menu.export_all')}
                         <Shortcut key="S" ctrl={true} shift={true} />
+                    </Menubar.Item>
+                    <Menubar.Separator />
+                    <Menubar.Item onclick={() => (syncOpen = true)}>
+                        <RefreshCw size="16" />
+                        {i18n._('sync.title')}
                     </Menubar.Item>
                 </Menubar.Content>
             </Menubar.Menu>
@@ -692,3 +701,5 @@
         @apply py-0.5;
     }
 </style>
+
+<SyncDialog bind:open={syncOpen} />

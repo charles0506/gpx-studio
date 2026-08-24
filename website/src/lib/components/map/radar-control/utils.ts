@@ -1,8 +1,8 @@
 import type { LayerTreeType } from '$lib/assets/layers';
 
 // One overlay per radar view. Drawing several at once made them overlap into a
-// mess, so the control shows one at a time and cycles through them: off, the
-// island-wide composite, then each of the three rain radars.
+// mess, so exactly one is ever shown. Which one is chosen in the layer panel;
+// the map control only shows and hides it.
 export const radarStations = [
     'cwaRadarAll',
     'cwaRadarNorth',
@@ -53,11 +53,25 @@ export function withStation(
     return root;
 }
 
-/** The next station in the cycle, ending back at nothing. */
-export function nextStation(current: RadarStation | undefined): RadarStation | undefined {
-    if (current === undefined) {
+const LAST_STATION_KEY = 'radarStation';
+
+/**
+ * The view the control turns back on. Remembering it is what lets the button be
+ * a plain on/off switch: the choice belongs to the layer panel, and pressing
+ * the button should not silently move it somewhere else.
+ */
+export function rememberedStation(): RadarStation {
+    if (typeof localStorage === 'undefined') {
         return radarStations[0];
     }
-    const index = radarStations.indexOf(current);
-    return index + 1 < radarStations.length ? radarStations[index + 1] : undefined;
+    const stored = localStorage.getItem(LAST_STATION_KEY);
+    return radarStations.includes(stored as RadarStation)
+        ? (stored as RadarStation)
+        : radarStations[0];
+}
+
+export function rememberStation(station: RadarStation): void {
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(LAST_STATION_KEY, station);
+    }
 }

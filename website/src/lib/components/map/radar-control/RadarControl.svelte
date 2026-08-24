@@ -4,11 +4,19 @@
     import { CloudRain } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { settings } from '$lib/logic/settings';
-    import { activeStation, nextStation, withStation } from './utils';
+    import { activeStation, rememberedStation, rememberStation, withStation } from './utils';
 
     const { currentOverlays } = settings;
 
     let station = $derived(activeStation($currentOverlays));
+
+    // Whatever is on gets remembered, so hiding and showing again comes back to
+    // the same view rather than to a default.
+    $effect(() => {
+        if (station !== undefined) {
+            rememberStation(station);
+        }
+    });
 </script>
 
 <CustomControl class="w-[29px] h-[29px] shrink-0">
@@ -16,11 +24,12 @@
         variant="ghost"
         class="w-full h-full border-none rounded-sm"
         side="left"
-        label={station === undefined
-            ? i18n._('layers.label.cwaRadarAll')
-            : i18n._(`layers.label.${station}`)}
+        label={i18n._(`layers.label.${station ?? rememberedStation()}`)}
         onclick={() => {
-            $currentOverlays = withStation($currentOverlays, nextStation(station));
+            $currentOverlays = withStation(
+                $currentOverlays,
+                station === undefined ? rememberedStation() : undefined
+            );
         }}
     >
         <CloudRain

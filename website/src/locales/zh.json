@@ -285,7 +285,7 @@
             "departure": "出发时间",
             "arrival": "抵达",
             "rain_amount": "雨量",
-            "next_24h": "未来 24 小时降雨",
+            "next_24h": "出发后 24 小时降雨",
             "total_rain": "行程期间："
         }
     },

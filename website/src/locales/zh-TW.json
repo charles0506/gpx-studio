@@ -285,7 +285,7 @@
             "departure": "出發時間",
             "arrival": "抵達",
             "rain_amount": "雨量",
-            "next_24h": "未來 24 小時降雨",
+            "next_24h": "出發後 24 小時降雨",
             "total_rain": "行程期間："
         }
     },

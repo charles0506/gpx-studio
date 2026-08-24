@@ -72,13 +72,21 @@
         return new Date(departure().getTime() + seconds * 1000);
     }
 
+    // Open-Meteo answers for up to sixteen days, but only for as many as are
+    // asked for. A departure next weekend needs the days in between, or every
+    // hour of the walk falls outside the series and the table reads as dashes.
+    function forecastDays(): number {
+        const daysAhead = Math.ceil((departure().getTime() - Date.now()) / 86400000);
+        return Math.min(16, Math.max(3, daysAhead + 2));
+    }
+
     async function load() {
         loading = true;
         error = undefined;
         try {
             const [taiwanData, hourly] = await Promise.all([
                 fetchWeather(samples).catch(() => [] as WeatherPoint[]),
-                fetchHourlyForecast(samples),
+                fetchHourlyForecast(samples, forecastDays()),
             ]);
             observations = taiwanData;
             forecasts = hourly;
@@ -121,6 +129,12 @@
 
     function round(value: number | undefined, digits = 0): string {
         return value === undefined || !Number.isFinite(value) ? '—' : value.toFixed(digits);
+    }
+
+    function startOfHour(date: Date): Date {
+        const hour = new Date(date);
+        hour.setMinutes(0, 0, 0);
+        return hour;
     }
 
     function clockOf(date: Date): string {
@@ -234,6 +248,7 @@
         {@const walk = forecasts[0]}
         {@const start = departure()}
         {@const end = new Date(start.getTime() + (totalSeconds ?? 0) * 1000)}
+        {@const window = walk.times.map((t, i) => i).filter((i) => walk.times[i] >= startOfHour(start)).slice(0, 24)}
         <div class="flex flex-col gap-1">
             <Label class="flex flex-row justify-between">
                 <span>{i18n._('toolbar.weather.next_24h')}</span>
@@ -243,7 +258,8 @@
                 </span>
             </Label>
             <div class="flex flex-row items-end gap-px h-12 border-b">
-                {#each walk.times.slice(0, 24) as time, i}
+                {#each window as i}
+                    {@const time = walk.times[i]}
                     {@const mm = walk.precipitation[i] ?? 0}
                     <div
                         class="grow bg-sky-500/70 min-h-px"
@@ -253,8 +269,8 @@
                 {/each}
             </div>
             <div class="flex flex-row justify-between text-[10px] text-muted-foreground">
-                {#each [0, 6, 12, 18] as hour}
-                    <span>{clockOf(walk.times[hour] ?? new Date())}</span>
+                {#each [0, 6, 12, 18] as offset}
+                    <span>{clockOf(walk.times[window[offset]] ?? start)}</span>
                 {/each}
             </div>
         </div>

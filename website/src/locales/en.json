@@ -298,7 +298,9 @@
             "length": "Length",
             "gradient": "Gradient",
             "time": "Time",
-            "attribution": "A climb is counted from 60 m of gain; dips under 25 m do not split one in two."
+            "attribution": "A climb is counted from 60 m of gain; dips under 25 m do not split one in two.",
+            "climbed": "climbed",
+            "to_go": "to go"
         }
     },
     "layers": {

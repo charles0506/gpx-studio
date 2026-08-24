@@ -58,6 +58,11 @@ export class MapLibreGLMap {
             hash: hash,
             boxZoom: false,
             maxPitch: 90,
+            // The default control expands itself whenever the map is wide enough,
+            // and on a route these credits sit across the track. Compact keeps it
+            // to an ⓘ that opens on demand — the attribution is still one tap
+            // away, which is what the licences ask for.
+            attributionControl: { compact: true },
         });
         this.layerEventManager = new MapLayerEventManager(map);
         map.addControl(

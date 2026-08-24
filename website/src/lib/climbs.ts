@@ -22,6 +22,12 @@ export type Climb = {
      */
     score: number;
     category: 1 | 2 | 3 | 4;
+    /**
+     * The climb's own profile, thinned to something a sparkline can use. Drawing
+     * the whole route to show one climb is what a watch face refuses to do, and
+     * rightly: what matters on the way up is the shape of this climb alone.
+     */
+    profile: Sample[];
 };
 
 type Sample = { km: number; elevation: number };
@@ -69,6 +75,18 @@ export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] 
     let start = samples[0];
     let peak = samples[0];
 
+    // Enough to keep the shape, few enough to put in an SVG path attribute.
+    const MAX_PROFILE_POINTS = 64;
+
+    const thin = (from: Sample, to: Sample): Sample[] => {
+        const within = samples.filter((s) => s.km >= from.km && s.km <= to.km);
+        if (within.length <= MAX_PROFILE_POINTS) {
+            return within;
+        }
+        const step = (within.length - 1) / (MAX_PROFILE_POINTS - 1);
+        return Array.from({ length: MAX_PROFILE_POINTS }, (_, i) => within[Math.round(i * step)]);
+    };
+
     const close = (end: Sample) => {
         const gain = peak.elevation - start.elevation;
         const length = peak.km - start.km;
@@ -89,6 +107,7 @@ export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] 
             gradient: Math.round(gradient * 10) / 10,
             score: Math.round(score),
             category: categorise(score),
+            profile: thin(start, peak),
         });
     };
 
@@ -118,6 +137,29 @@ export function climbAt(climbs: Climb[], km: number): Climb | undefined {
 /** The next climb ahead of a distance. */
 export function nextClimb(climbs: Climb[], km: number): Climb | undefined {
     return climbs.find((climb) => climb.startKm > km);
+}
+
+/**
+ * Metres of this climb already behind you at a distance. Measured against the
+ * climb's own profile rather than pro-rated from the total, since a climb that
+ * starts gently and steepens would otherwise flatter you early on.
+ */
+export function climbGainSoFar(climb: Climb, km: number): number {
+    if (km <= climb.startKm) {
+        return 0;
+    }
+    if (km >= climb.endKm) {
+        return climb.gain;
+    }
+
+    let here = climb.profile[0]?.elevation ?? climb.startElevation;
+    for (const sample of climb.profile) {
+        if (sample.km > km) {
+            break;
+        }
+        here = sample.elevation;
+    }
+    return Math.max(0, Math.round(here - climb.startElevation));
 }
 
 /** How far through a climb a distance is, from 0 to 1. */

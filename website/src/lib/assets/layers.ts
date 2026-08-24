@@ -407,6 +407,32 @@ export const basemaps: { [key: string]: string | StyleSpecification } = {
 };
 
 export const overlays: { [key: string]: string | StyleSpecification } = {
+    rainRadar: {
+        version: 8,
+        sources: {
+            rainRadar: {
+                type: 'raster',
+                // RAINVIEWER_PATH is resolved at runtime — see lib/rainviewer.ts.
+                tiles: [
+                    'https://tilecache.rainviewer.com/RAINVIEWER_PATH/256/{z}/{x}/{y}/4/1_1.png',
+                ],
+                tileSize: 256,
+                maxzoom: 12,
+                attribution:
+                    '&copy; <a href="https://www.rainviewer.com/" target="_blank">RainViewer</a>',
+            },
+        },
+        layers: [
+            {
+                id: 'rainRadar',
+                type: 'raster',
+                source: 'rainRadar',
+                paint: {
+                    'raster-opacity': 0.6,
+                },
+            },
+        ],
+    },
     cyclOSMlite: {
         version: 8,
         sources: {
@@ -990,6 +1016,7 @@ export const defaultOverlays: LayerTreeType = {
             cyclOSMlite: false,
             mapterhornHillshade: false,
             openRailwayMap: false,
+            rainRadar: false,
         },
         countries: {
             france: {
@@ -1132,6 +1159,7 @@ export const defaultOverlayTree: LayerTreeType = {
             cyclOSMlite: false,
             mapterhornHillshade: false,
             openRailwayMap: false,
+            rainRadar: true,
         },
         countries: {
             france: {

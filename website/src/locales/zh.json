@@ -396,7 +396,8 @@
             "mapterhorn": "Mapterhorn",
             "taiwan": "台湾",
             "rudyMap": "鲁地图（台湾地形）",
-            "rudyTwmap": "鲁地图（twmap 样式）"
+            "rudyTwmap": "鲁地图（twmap 样式）",
+            "rainRadar": "降雨雷达"
         }
     },
     "chart": {

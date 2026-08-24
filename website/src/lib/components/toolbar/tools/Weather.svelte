@@ -30,6 +30,7 @@
     let observations: WeatherPoint[] = $state([]);
     let forecasts: HourlyForecast[] = $state([]);
     let loading = $state(false);
+    let hovered: { clock: string; mm: number; probability: number } | undefined = $state(undefined);
     let error: string | undefined = $state(undefined);
 
     // Default to now: the common case is checking what the next few hours hold,
@@ -270,17 +271,33 @@
                     <span>{max} mm</span>
                     <span>0</span>
                 </div>
-                <div class="grow flex flex-row items-end gap-px h-12 border-b border-l pl-px">
+                <div
+                    class="grow flex flex-row items-end gap-px h-12 border-b border-l pl-px"
+                    role="presentation"
+                    onmouseleave={() => (hovered = undefined)}
+                >
                     {#each window as i}
                         {@const time = walk.times[i]}
                         {@const mm = walk.precipitation[i] ?? 0}
                         <div
-                            class="grow bg-sky-500/70 min-h-px"
+                            class="grow bg-sky-500/70 hover:bg-sky-400 min-h-px"
                             style="height: {barHeight(mm, max)}%"
-                            title="{clockOf(time)} · {mm} mm · {walk.precipitationProbability[i]}%"
+                            role="presentation"
+                            onmouseenter={() =>
+                                (hovered = {
+                                    clock: clockOf(time),
+                                    mm,
+                                    probability: walk.precipitationProbability[i] ?? 0,
+                                })}
                         ></div>
                     {/each}
                 </div>
+            </div>
+            <div class="text-xs h-4">
+                {#if hovered}
+                    <span class="font-medium">{hovered.clock}</span>
+                    · {hovered.mm.toFixed(1)} mm · {Math.round(hovered.probability)}%
+                {/if}
             </div>
             <div class="flex flex-row justify-between text-[10px] text-muted-foreground">
                 {#each [0, 6, 12, 18] as offset}

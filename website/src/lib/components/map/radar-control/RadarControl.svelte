@@ -4,11 +4,27 @@
     import { CloudRain } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { settings } from '$lib/logic/settings';
-    import { activeStation, rememberedStation, rememberStation, withStation } from './utils';
+    import {
+        activeStation,
+        enforceSingleRadar,
+        rememberedStation,
+        rememberStation,
+        withStation,
+    } from './utils';
 
     const { currentOverlays } = settings;
 
     let station = $derived(activeStation($currentOverlays));
+
+    // The layer panel is free to tick a second view; this puts it back to one.
+    let previousOverlays = $state($currentOverlays);
+    $effect(() => {
+        const corrected = enforceSingleRadar(previousOverlays, $currentOverlays);
+        previousOverlays = corrected ?? $currentOverlays;
+        if (corrected) {
+            $currentOverlays = corrected;
+        }
+    });
 
     // Whatever is on gets remembered, so hiding and showing again comes back to
     // the same view rather than to a default.

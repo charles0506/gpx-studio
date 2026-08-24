@@ -75,3 +75,30 @@ export function rememberStation(station: RadarStation): void {
         localStorage.setItem(LAST_STATION_KEY, station);
     }
 }
+
+/**
+ * Keep at most one radar view on. The layer panel renders the whole overlay
+ * tree with checkboxes, so nothing there stops two views being ticked at once —
+ * and two of these images drawn together are unreadable. Rather than teach the
+ * panel about exclusive groups, drop the older selection whenever a second one
+ * appears.
+ */
+export function enforceSingleRadar(
+    previous: LayerTreeType | undefined,
+    next: LayerTreeType | undefined
+): LayerTreeType | undefined {
+    const group = leaf(next);
+    if (!group) {
+        return undefined;
+    }
+
+    const on = radarStations.filter((station) => group[station] === true);
+    if (on.length < 2) {
+        return undefined;
+    }
+
+    // Whichever was not on a moment ago is the one just ticked.
+    const before = leaf(previous);
+    const added = on.find((station) => before?.[station] !== true) ?? on[on.length - 1];
+    return withStation(next, added);
+}

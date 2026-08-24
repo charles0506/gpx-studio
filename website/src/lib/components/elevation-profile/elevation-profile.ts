@@ -26,6 +26,7 @@ import { mode } from 'mode-watcher';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
 import { departureTime, routeRainfall } from '$lib/weather';
 import { livePosition, progressAlongRoute } from '$lib/live-position';
+import { findClimbs, gradientColour } from '$lib/climbs';
 import { cumulativeHikingTime, secondsAt, type HikingTimePoint } from '$lib/hiking-time';
 
 const { distanceUnits, velocityUnits, temperatureUnits } = settings;
@@ -608,6 +609,38 @@ export class ElevationProfile {
         return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
     }
 
+    // Each climb gets a band along the foot of the chart, coloured by how
+    // steep it is — the same read as a ClimbPro screen, in the place the
+    // profile already occupies.
+    private drawClimbs() {
+        const climbs = findClimbs(get(this._gpxStatistics));
+        if (climbs.length === 0 || !this._chart) {
+            return;
+        }
+
+        const context = this._overlay.getContext("2d");
+        if (!context) {
+            return;
+        }
+
+        const { bottom } = this._chart.chartArea;
+        const units = get(distanceUnits);
+        const height = 4;
+
+        context.save();
+        for (const climb of climbs) {
+            const from = this._chart.scales.x.getPixelForValue(
+                getConvertedDistance(climb.startKm, units)
+            );
+            const to = this._chart.scales.x.getPixelForValue(
+                getConvertedDistance(climb.endKm, units)
+            );
+            context.fillStyle = gradientColour(climb.gradient);
+            context.fillRect(from, bottom - height, Math.max(1, to - from), height);
+        }
+        context.restore();
+    }
+
     // Where the walker is, marked on the profile. Drawn after the selection
     // shading so it stays visible over it.
     private drawLivePosition() {
@@ -743,6 +776,7 @@ export class ElevationProfile {
             }
         }
 
+        this.drawClimbs();
         this.drawLivePosition();
     }
 

@@ -6,6 +6,7 @@
     import Waypoint from '$lib/components/toolbar/tools/waypoint/Waypoint.svelte';
     import Time from '$lib/components/toolbar/tools/Time.svelte';
     import Weather from '$lib/components/toolbar/tools/Weather.svelte';
+    import Climbs from '$lib/components/toolbar/tools/Climbs.svelte';
     import Merge from '$lib/components/toolbar/tools/Merge.svelte';
     import Elevation from '$lib/components/toolbar/tools/Elevation.svelte';
     import Extract from '$lib/components/toolbar/tools/Extract.svelte';
@@ -55,6 +56,8 @@
                         <Time />
                     {:else if $currentTool === Tool.WEATHER}
                         <Weather />
+                    {:else if $currentTool === Tool.CLIMBS}
+                        <Climbs />
                     {:else if $currentTool === Tool.MERGE}
                         <Merge />
                     {:else if $currentTool === Tool.ELEVATION}

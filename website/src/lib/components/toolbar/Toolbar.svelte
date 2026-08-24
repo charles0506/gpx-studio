@@ -13,6 +13,7 @@
         Scissors,
         MountainSnow,
     CloudRain,
+    TrendingUp,
 } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
 
@@ -52,6 +53,9 @@
         </ToolbarItem>
         <ToolbarItem itemTool={Tool.CLEAN} label={i18n._('toolbar.clean.tooltip')}>
             <SquareDashedMousePointer size="18" class="size-4.5" />
+        </ToolbarItem>
+        <ToolbarItem itemTool={Tool.CLIMBS} label={i18n._('toolbar.climbs.tooltip')}>
+            <TrendingUp size="18" class="size-4.5" />
         </ToolbarItem>
         <ToolbarItem itemTool={Tool.WEATHER} label={i18n._('toolbar.weather.tooltip')}>
             <CloudRain size="18" class="size-4.5" />

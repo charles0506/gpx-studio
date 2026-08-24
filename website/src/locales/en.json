@@ -287,6 +287,18 @@
             "rain_amount": "Rain",
             "next_24h": "Rain in the 12 hours after departure",
             "total_rain": "While walking:"
+        },
+        "climbs": {
+            "tooltip": "Climbs",
+            "help": "No climb on this route gains enough to be worth calling out. Select a track with some ascent.",
+            "on_climb": "On a climb",
+            "next": "Next climb",
+            "ahead": "ahead",
+            "remaining": "Left:",
+            "length": "Length",
+            "gradient": "Gradient",
+            "time": "Time",
+            "attribution": "A climb is counted from 60 m of gain; dips under 25 m do not split one in two."
         }
     },
     "layers": {

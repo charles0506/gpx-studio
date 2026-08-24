@@ -287,6 +287,18 @@
             "rain_amount": "雨量",
             "next_24h": "出发后 12 小时降雨",
             "total_rain": "行程期间："
+        },
+        "climbs": {
+            "tooltip": "爬坡",
+            "help": "这条路线没有达到门槛的爬坡段。选一条有明显爬升的轨迹。",
+            "on_climb": "爬坡中",
+            "next": "下一段爬坡",
+            "ahead": "后",
+            "remaining": "剩余",
+            "length": "长度",
+            "gradient": "坡度",
+            "time": "时间",
+            "attribution": "爬升 60 米以上才算一段；中间下降不超过 25 米不会拆成两段。"
         }
     },
     "layers": {

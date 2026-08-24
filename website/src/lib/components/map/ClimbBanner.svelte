@@ -17,6 +17,7 @@
         verticalSpeed,
     } from '$lib/live-position';
     import { cumulativeHikingTime, secondsAt } from '$lib/hiking-time';
+    import { map } from '$lib/components/map/map';
     import { TrendingUp } from '@lucide/svelte';
 
     // Reading the climb should not mean keeping a toolbar panel open on a phone
@@ -80,6 +81,22 @@
     // coming; reading how far and how much higher the top is wants room.
     let expanded = $state(false);
 
+    // Opened up, it covers the map. Reaching for the map is therefore taken as
+    // asking for it back: any drag or zoom folds the climb away again.
+    $effect(() => {
+        const instance = $map;
+        if (!instance) {
+            return;
+        }
+        const fold = () => (expanded = false);
+        instance.on('dragstart', fold);
+        instance.on('zoomstart', fold);
+        return () => {
+            instance.off('dragstart', fold);
+            instance.off('zoomstart', fold);
+        };
+    });
+
     let viewportWidth = $state(0);
     $effect(() => {
         viewportWidth = window.innerWidth;
@@ -91,8 +108,13 @@
     // The climb drawn on its own, the way a watch shows it: this hill, not the
     // whole day, and shaded by how steep each part of it is rather than by one
     // average that hides the wall at the top.
+    // The map keeps a toolbar 80 px wide down the left and a stack of controls
+    // down the right. Centring on the map itself puts the panel under the left
+    // toolbar on a phone, so it centres in the gap between them instead, and
+    // never grows wider than that gap.
+    const SIDE_CONTROLS = 80 + 44 + 24;
     let width = $derived(
-        expanded ? Math.max(240, Math.min(520, (viewportWidth || 360) * 0.92 - 28)) : 240
+        Math.max(160, Math.min(expanded ? 520 : 240, (viewportWidth || 360) - SIDE_CONTROLS))
     );
     let height = $derived(expanded ? 150 : 44);
     // Gradients read off neighbouring samples of a thinned profile are noise;
@@ -197,9 +219,13 @@
 {#if visible && current && remaining}
     {@const colour = gradientColour(current.gradient)}
     <div
-        class="absolute top-0 left-1/2 -translate-x-1/2 mt-14 z-20 pointer-events-none w-fit max-w-[92vw]"
+        class="absolute top-0 left-20 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
     >
-        <div class="bg-background/95 rounded-md shadow-md px-3 py-1.5 flex flex-col gap-1">
+        <div
+            class="{expanded
+                ? 'bg-background/85'
+                : 'bg-background/95'} rounded-md shadow-md px-3 py-1.5 flex flex-col gap-1"
+        >
             <div class="flex flex-row items-center gap-2 text-xs text-muted-foreground">
                 <TrendingUp size="14" style="color: {colour}" />
                 <span>
@@ -331,7 +357,7 @@
     </div>
 {:else if visible && upcoming && here !== undefined}
     <div
-        class="absolute top-0 left-1/2 -translate-x-1/2 mt-14 z-20 pointer-events-none w-fit max-w-[92vw]"
+        class="absolute top-0 left-20 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
     >
         <div
             class="bg-background/95 rounded-md shadow-md px-2.5 py-1.5 text-sm flex flex-row items-center gap-2 whitespace-nowrap"

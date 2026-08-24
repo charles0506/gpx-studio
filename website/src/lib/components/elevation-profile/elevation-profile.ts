@@ -203,11 +203,6 @@ export class ElevationProfile {
                         label: (context: TooltipItem<'line'>) => {
                             let point = context.raw as ElevationProfilePoint;
                             if (context.datasetIndex === 0) {
-                                if (this._dragging) {
-                                    this._hoveredPoint.set(null);
-                                } else {
-                                    this._hoveredPoint.set(point.coordinates);
-                                }
                                 return `${i18n._('quantities.elevation')}: ${getElevationWithUnits(point.y, false)}`;
                             } else if (context.datasetIndex === 1) {
                                 return `${get(velocityUnits) === 'speed' ? i18n._('quantities.speed') : i18n._('quantities.pace')}: ${getVelocityWithUnits(point.y, false)}`;
@@ -230,6 +225,9 @@ export class ElevationProfile {
                             let context = contexts.filter((context) => context.datasetIndex === 0);
                             if (context.length === 0) return;
                             let point = context[0].raw as ElevationProfilePoint;
+
+                            // Drives the marker on the map.
+                            this._hoveredPoint.set(this._dragging ? null : point.coordinates);
                             let slope = {
                                 at: point.slope.at.toFixed(1),
                                 segment: point.slope.segment.toFixed(1),
@@ -565,6 +563,10 @@ export class ElevationProfile {
             backgroundColor: 'rgba(56, 189, 248, 0.35)',
             borderWidth: 0,
             pointRadius: 0,
+            // Never let the rain steal the hover from the elevation: the
+            // interaction mode is 'nearest', and this series runs along the foot
+            // of the chart where the cursor often is.
+            pointHitRadius: 0,
             fill: 'start',
             hidden: rainfall.length === 0,
         } as any;

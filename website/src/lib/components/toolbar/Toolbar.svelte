@@ -12,7 +12,8 @@
         Funnel,
         Scissors,
         MountainSnow,
-    } from '@lucide/svelte';
+    CloudRain,
+} from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
 
     let props: {
@@ -51,6 +52,9 @@
         </ToolbarItem>
         <ToolbarItem itemTool={Tool.CLEAN} label={i18n._('toolbar.clean.tooltip')}>
             <SquareDashedMousePointer size="18" class="size-4.5" />
+        </ToolbarItem>
+        <ToolbarItem itemTool={Tool.WEATHER} label={i18n._('toolbar.weather.tooltip')}>
+            <CloudRain size="18" class="size-4.5" />
         </ToolbarItem>
     </div>
     <ToolbarItemMenu class={props.class ?? ''} />

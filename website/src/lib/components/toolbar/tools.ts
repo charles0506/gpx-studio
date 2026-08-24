@@ -10,6 +10,7 @@ export enum Tool {
     ELEVATION,
     REDUCE,
     CLEAN,
+    WEATHER,
 }
 
 export const currentTool: Writable<Tool | null> = writable(null);

@@ -271,6 +271,17 @@
             "button": "Delete",
             "help": "Select a rectangle area on the map to remove GPS points and points of interest.",
             "help_no_selection": "Select a trace to clean GPS points and points of interest."
+        },
+        "weather": {
+            "tooltip": "Weather along the route",
+            "button": "Look up the weather",
+            "station": "Station",
+            "rain_chance": "Rain",
+            "conditions": "Conditions",
+            "help": "Samples the route every few kilometres and reports the nearest weather station and the county forecast.",
+            "help_invalid_selection": "Select a track to look up the weather along it.",
+            "help_outside_taiwan": "Only routes inside Taiwan are covered.",
+            "attribution": "Observations and forecast: Central Weather Administration"
         }
     },
     "layers": {

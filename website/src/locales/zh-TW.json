@@ -271,6 +271,17 @@
             "button": "刪除",
             "help": "在地圖上繪製矩形選區以清除。",
             "help_no_selection": "選擇一個軌跡以清除其 GPS 點和興趣點。"
+        },
+        "weather": {
+            "tooltip": "沿線天氣",
+            "button": "查詢天氣",
+            "station": "測站",
+            "rain_chance": "降雨",
+            "conditions": "天氣",
+            "help": "沿路線每隔數公里取樣，顯示最近測站的即時觀測與該縣市預報。",
+            "help_invalid_selection": "選擇一條軌跡以查詢沿線天氣。",
+            "help_outside_taiwan": "僅涵蓋台灣範圍內的路線。",
+            "attribution": "觀測與預報資料：中央氣象署"
         }
     },
     "layers": {

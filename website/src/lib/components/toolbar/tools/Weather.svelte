@@ -22,7 +22,7 @@
         rainBetween,
         type HourlyForecast,
     } from '$lib/hourly-forecast';
-    import { defaultFitnessFactor, estimateHikingTime } from '$lib/hiking-time';
+    import { cumulativeHikingTime, defaultFitnessFactor, secondsAt } from '$lib/hiking-time';
 
     let props: {
         class?: string;
@@ -53,8 +53,8 @@
     });
     let hasRoute = $derived(samples.length > 0);
     let inTaiwan = $derived(samples.some((s) => isInTaiwan(s.lat, s.lon)));
-    let totalSeconds = $derived(estimateHikingTime($gpxStatistics, defaultFitnessFactor));
-    let totalKm = $derived(samples.length > 0 ? samples[samples.length - 1].at : 0);
+    let walkingCurve = $derived(cumulativeHikingTime($gpxStatistics, defaultFitnessFactor));
+    let totalSeconds = $derived(walkingCurve.at(-1)?.seconds);
 
     function departure(): Date {
         const [hours, minutes] = startTime.split(':').map((x) => parseInt(x));
@@ -62,10 +62,11 @@
         return new Date(day.year, day.month - 1, day.day, hours, minutes);
     }
 
-    // Walking time is spent unevenly, but the estimate is already an
-    // approximation, so distance along the route is a fair enough proxy.
+    // Read the moment off the accumulated curve rather than scaling the total
+    // by distance: a kilometre of switchbacks costs several times a kilometre of
+    // valley floor, and the whole point is to know when you reach the ridge.
     function arrivalAt(km: number): Date {
-        const seconds = totalSeconds && totalKm > 0 ? (totalSeconds * km) / totalKm : 0;
+        const seconds = secondsAt(walkingCurve, km) ?? 0;
         return new Date(departure().getTime() + seconds * 1000);
     }
 

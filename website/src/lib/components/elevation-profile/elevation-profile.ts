@@ -25,7 +25,7 @@ import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
 import { mode } from 'mode-watcher';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
 import { departureTime, routeRainfall } from '$lib/weather';
-import { estimateHikingTime } from '$lib/hiking-time';
+import { cumulativeHikingTime, secondsAt, type HikingTimePoint } from '$lib/hiking-time';
 
 const { distanceUnits, velocityUnits, temperatureUnits } = settings;
 
@@ -85,7 +85,7 @@ export class ElevationProfile {
     private _gpxStatistics: Readable<GPXStatisticsGroup>;
     private _slicedGPXStatistics: Writable<[GPXGlobalStatistics, number, number] | undefined>;
     private _hoveredPoint: Writable<Coordinates | null>;
-    private _estimatedSeconds: number | undefined = undefined;
+    private _walkingCurve: HikingTimePoint[] = [];
     private _additionalDatasets: Readable<string[]>;
     private _elevationFill: Readable<'slope' | 'surface' | 'highway' | undefined>;
 
@@ -564,7 +564,7 @@ export class ElevationProfile {
             hidden: rainfall.length === 0,
         } as any;
 
-        this._estimatedSeconds = estimateHikingTime(data);
+        this._walkingCurve = cumulativeHikingTime(data);
 
         this._chart.options.scales!.x!['min'] = 0;
         this._chart.options.scales!.x!['max'] = getConvertedDistance(
@@ -590,13 +590,17 @@ export class ElevationProfile {
     // estimate spread along the route in proportion to distance.
     private clockAt(distance: number): string | undefined {
         const start = get(departureTime);
-        const total = this._estimatedSeconds;
-        const max = this._chart?.options.scales?.x?.max as number | undefined;
-        if (!start || !total || !max || max <= 0) {
+        if (!start || this._walkingCurve.length === 0) {
             return undefined;
         }
 
-        const at = new Date(start.getTime() + total * (distance / max) * 1000);
+        const km = getUnconvertedDistance(distance, get(distanceUnits));
+        const seconds = secondsAt(this._walkingCurve, km);
+        if (seconds === undefined) {
+            return undefined;
+        }
+
+        const at = new Date(start.getTime() + seconds * 1000);
         return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
     }
 

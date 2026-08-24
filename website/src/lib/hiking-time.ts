@@ -28,19 +28,28 @@ export const defaultFitnessFactor = 0.7;
 export const minimumFitnessFactor = 0.3;
 export const maximumFitnessFactor = 1.5;
 
+export type HikingTimePoint = {
+    /** Distance along the route, in kilometres. */
+    km: number;
+    /** Seconds of walking to reach it. */
+    seconds: number;
+};
+
 /**
- * Estimate how long a route takes to walk, in seconds, from its distances and
- * slopes alone — no timestamps needed. Returns undefined when the selection
- * holds nothing to work with.
+ * Walking time accumulated along the route. Time is spent very unevenly — a
+ * kilometre of switchbacks costs two or three times a kilometre of valley
+ * floor — so anything that maps a distance to a moment has to read it from
+ * here rather than scale the total by distance.
  */
-export function estimateHikingTime(
+export function cumulativeHikingTime(
     statistics: GPXStatisticsGroup | undefined,
     fitnessFactor: number = defaultFitnessFactor
-): number | undefined {
+): HikingTimePoint[] {
     if (!statistics?.forEachTrackPoint) {
-        return undefined;
+        return [];
     }
 
+    const points: HikingTimePoint[] = [];
     let seconds = 0;
     let previousKilometers: number | undefined = undefined;
     let previousSlope = 0;
@@ -50,15 +59,55 @@ export function estimateHikingTime(
         if (previousKilometers !== undefined) {
             const kilometers = distance - previousKilometers;
             if (kilometers > 0) {
+                // The slope leading into this point is the one that was walked.
                 const speed = toblerSpeed(previousSlope / 100) * fitnessFactor;
                 if (speed > 0) {
                     seconds += (kilometers / speed) * 3600;
                 }
             }
         }
+        points.push({ km: distance, seconds });
         previousKilometers = distance;
         previousSlope = slope.at;
     });
 
-    return seconds > 0 ? Math.round(seconds) : undefined;
+    return points;
+}
+
+/**
+ * Estimate how long a route takes to walk, in seconds, from its distances and
+ * slopes alone — no timestamps needed. Returns undefined when the selection
+ * holds nothing to work with.
+ */
+export function estimateHikingTime(
+    statistics: GPXStatisticsGroup | undefined,
+    fitnessFactor: number = defaultFitnessFactor
+): number | undefined {
+    const points = cumulativeHikingTime(statistics, fitnessFactor);
+    const total = points.at(-1)?.seconds ?? 0;
+    return total > 0 ? Math.round(total) : undefined;
+}
+
+/** Seconds of walking to reach a distance, interpolated between track points. */
+export function secondsAt(points: HikingTimePoint[], km: number): number | undefined {
+    if (points.length === 0) {
+        return undefined;
+    }
+    if (km <= points[0].km) {
+        return points[0].seconds;
+    }
+    if (km >= points[points.length - 1].km) {
+        return points[points.length - 1].seconds;
+    }
+
+    for (let i = 1; i < points.length; i++) {
+        if (points[i].km >= km) {
+            const a = points[i - 1];
+            const b = points[i];
+            const span = b.km - a.km;
+            const t = span > 0 ? (km - a.km) / span : 0;
+            return a.seconds + (b.seconds - a.seconds) * t;
+        }
+    }
+    return points[points.length - 1].seconds;
 }

@@ -303,6 +303,9 @@
             "climb_screen": "爬坡畫面",
             "average": "平均",
             "vertical_speed": "垂直速度",
+            "remaining_distance": "剩餘距離",
+            "remaining_gain": "剩餘爬升",
+            "summit": "頂點",
             "climbed": "已爬",
             "to_go": "還要爬"
         }

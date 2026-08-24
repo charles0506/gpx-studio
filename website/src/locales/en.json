@@ -303,6 +303,9 @@
             "climb_screen": "Climb screen",
             "average": "avg",
             "vertical_speed": "VAM",
+            "remaining_distance": "Distance left",
+            "remaining_gain": "Climb left",
+            "summit": "Summit",
             "climbed": "climbed",
             "to_go": "to go"
         }

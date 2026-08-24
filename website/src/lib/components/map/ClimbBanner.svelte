@@ -76,11 +76,25 @@
             : undefined
     );
 
+    // Tapping the climb opens it up. Glancing at a sparkline tells you a wall is
+    // coming; reading how far and how much higher the top is wants room.
+    let expanded = $state(false);
+
+    let viewportWidth = $state(0);
+    $effect(() => {
+        viewportWidth = window.innerWidth;
+        const onResize = () => (viewportWidth = window.innerWidth);
+        window.addEventListener('resize', onResize);
+        return () => window.removeEventListener('resize', onResize);
+    });
+
     // The climb drawn on its own, the way a watch shows it: this hill, not the
     // whole day, and shaded by how steep each part of it is rather than by one
     // average that hides the wall at the top.
-    const WIDTH = 240;
-    const HEIGHT = 44;
+    let width = $derived(
+        expanded ? Math.max(240, Math.min(520, (viewportWidth || 360) * 0.92 - 28)) : 240
+    );
+    let height = $derived(expanded ? 150 : 44);
     // Gradients read off neighbouring samples of a thinned profile are noise;
     // over a hundred metres they are what the legs feel.
     const HALF_WINDOW_KM = 0.05;
@@ -90,9 +104,11 @@
         line: string;
         markerX: number;
         markerY: number;
+        /** Height above sea level under the marker, in metres. */
+        markerElevation: number;
     };
 
-    function shapeOf(climb: Climb, at: number): Shape | undefined {
+    function shapeOf(climb: Climb, at: number, w: number, h: number): Shape | undefined {
         const profile = climb.profile;
         if (profile.length < 2) {
             return undefined;
@@ -105,8 +121,8 @@
         const low = Math.min(...elevations);
         const rise = Math.max(Math.max(...elevations) - low, 1);
 
-        const x = (km: number) => ((km - firstKm) / span) * WIDTH;
-        const y = (elevation: number) => HEIGHT - ((elevation - low) / rise) * (HEIGHT - 5) - 2;
+        const x = (km: number) => ((km - firstKm) / span) * w;
+        const y = (elevation: number) => h - ((elevation - low) / rise) * (h - 5) - 2;
 
         const bands = [];
         for (let i = 0; i + 1 < profile.length; i += 1) {
@@ -123,7 +139,7 @@
             const y0 = y(profile[i].elevation);
             const y1 = y(profile[i + 1].elevation);
             bands.push({
-                d: `M${x0.toFixed(1)},${HEIGHT} L${x0.toFixed(1)},${y0.toFixed(1)} L${x1.toFixed(1)},${y1.toFixed(1)} L${x1.toFixed(1)},${HEIGHT} Z`,
+                d: `M${x0.toFixed(1)},${h} L${x0.toFixed(1)},${y0.toFixed(1)} L${x1.toFixed(1)},${y1.toFixed(1)} L${x1.toFixed(1)},${h} Z`,
                 colour: gradientColour(gradient),
             });
         }
@@ -152,10 +168,13 @@
                 .join(' '),
             markerX: x(km),
             markerY: y(elevation),
+            markerElevation: Math.round(elevation),
         };
     }
 
-    let shape = $derived(current && here !== undefined ? shapeOf(current, here) : undefined);
+    let shape = $derived(
+        current && here !== undefined ? shapeOf(current, here, width, height) : undefined
+    );
 
     function minutes(seconds: number | undefined): string {
         if (seconds === undefined) {
@@ -195,20 +214,44 @@
 
             <!-- What is left of this climb: how far, and how much up. -->
             <div class="flex flex-row items-baseline justify-between gap-6">
-                <span class="text-2xl font-semibold leading-none tabular-nums">
-                    {remaining.km.toFixed(2)}<span class="text-sm font-normal ml-0.5">km</span>
-                </span>
-                <span
-                    class="text-2xl font-semibold leading-none tabular-nums"
-                    style="color: {colour}"
-                >
-                    {remaining.gain}<span class="text-sm ml-0.5">↑</span>
-                </span>
+                <div class="flex flex-col gap-0.5">
+                    <span class="text-2xl font-semibold leading-none tabular-nums">
+                        {remaining.km.toFixed(2)}<span class="text-sm font-normal ml-0.5">km</span>
+                    </span>
+                    {#if expanded}
+                        <span class="text-[10px] leading-none text-muted-foreground">
+                            {i18n._('toolbar.climbs.remaining_distance')}
+                        </span>
+                    {/if}
+                </div>
+                <div class="flex flex-col gap-0.5 items-end">
+                    <span
+                        class="text-2xl font-semibold leading-none tabular-nums"
+                        style="color: {colour}"
+                    >
+                        {remaining.gain}<span class="text-sm ml-0.5">↑</span>
+                    </span>
+                    {#if expanded}
+                        <span class="text-[10px] leading-none text-muted-foreground">
+                            {i18n._('toolbar.climbs.remaining_gain')}
+                        </span>
+                    {/if}
+                </div>
             </div>
 
             {#if shape}
-                <div class="relative" style="width: {WIDTH}px">
-                    <svg width={WIDTH} height={HEIGHT} class="block">
+                <!-- Tappable, so the sparkline can become something you can read
+                     a summit height off. pointer-events only here: the rest of
+                     the panel must not take the map's drags. -->
+                <button
+                    type="button"
+                    class="relative pointer-events-auto cursor-pointer"
+                    style="width: {width}px"
+                    aria-expanded={expanded}
+                    aria-label={i18n._('toolbar.climbs.climb_screen')}
+                    onclick={() => (expanded = !expanded)}
+                >
+                    <svg {width} {height} class="block">
                         {#each shape.bands as band}
                             <path d={band.d} fill={band.colour} fill-opacity="0.75" />
                         {/each}
@@ -219,22 +262,60 @@
                             stroke-width="1.25"
                             stroke-linejoin="round"
                         />
+                        {#if expanded}
+                            <!-- Where you stand, carried across to the top so the
+                                 climb left reads as a height rather than a gap. -->
+                            <line
+                                x1={shape.markerX}
+                                y1={shape.markerY}
+                                x2={width}
+                                y2={shape.markerY}
+                                stroke="#dc2626"
+                                stroke-width="1"
+                                stroke-dasharray="3 3"
+                                opacity="0.6"
+                            />
+                        {/if}
                         <circle
                             cx={shape.markerX}
                             cy={shape.markerY}
-                            r="4"
+                            r={expanded ? 5 : 4}
                             fill="#dc2626"
                             stroke="#ffffff"
                             stroke-width="1.5"
                         />
                     </svg>
+
+                    {#if expanded}
+                        <span
+                            class="absolute left-1 top-0.5 text-[10px] leading-none text-slate-700 bg-white/70 rounded px-1"
+                        >
+                            {i18n._('toolbar.climbs.summit')}
+                            {current.endElevation} m
+                        </span>
+                        <span
+                            class="absolute left-1 bottom-0.5 text-[10px] leading-none text-slate-700 bg-white/70 rounded px-1"
+                        >
+                            {current.startElevation} m
+                        </span>
+                        <span
+                            class="absolute text-[10px] leading-none text-white bg-red-600 rounded px-1 -translate-x-1/2 -translate-y-full"
+                            style="left: {Math.min(
+                                Math.max(shape.markerX, 24),
+                                width - 24
+                            )}px; top: {shape.markerY - 6}px"
+                        >
+                            {shape.markerElevation} m
+                        </span>
+                    {/if}
+
                     <span
                         class="absolute right-1 bottom-0.5 text-[10px] leading-none text-slate-700 bg-white/70 rounded px-1"
                     >
                         {i18n._('toolbar.climbs.average')}
                         {current.gradient}%
                     </span>
-                </div>
+                </button>
             {/if}
 
             <div

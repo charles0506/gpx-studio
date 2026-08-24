@@ -11,6 +11,7 @@
         currentSlot,
         fetchWeather,
         isInTaiwan,
+        routeRainfall,
         sampleRoute,
         type WeatherPoint,
     } from '$lib/weather';
@@ -42,6 +43,12 @@
     );
 
     let samples = $derived(sampleRoute($gpxStatistics));
+
+    $effect(() => {
+        // Changing the selection invalidates whatever was drawn for the old one.
+        void $gpxStatistics;
+        $routeRainfall = [];
+    });
     let hasRoute = $derived(samples.length > 0);
     let inTaiwan = $derived(samples.some((s) => isInTaiwan(s.lat, s.lon)));
     let totalSeconds = $derived(estimateHikingTime($gpxStatistics, defaultFitnessFactor));
@@ -70,12 +77,35 @@
             ]);
             observations = taiwanData;
             forecasts = hourly;
+            publishRainfall(hourly);
         } catch (e) {
             error = e instanceof Error ? e.message : String(e);
             forecasts = [];
         } finally {
             loading = false;
         }
+    }
+
+    // Hand the profile the rain expected at each sample, keyed by distance, so
+    // it can draw it under the elevation.
+    function publishRainfall(hourly: HourlyForecast[]) {
+        $routeRainfall = hourly
+            .map((forecast, index) => {
+                const km = samples[index]?.at;
+                if (km === undefined) {
+                    return undefined;
+                }
+                const hour = hourIndexFor(forecast, arrivalAt(km));
+                if (hour === undefined) {
+                    return undefined;
+                }
+                return {
+                    km,
+                    mm: forecast.precipitation[hour] ?? 0,
+                    probability: forecast.precipitationProbability[hour] ?? 0,
+                };
+            })
+            .filter((entry) => entry !== undefined);
     }
 
     function round(value: number | undefined, digits = 0): string {

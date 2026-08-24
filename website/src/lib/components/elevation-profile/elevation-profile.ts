@@ -24,6 +24,7 @@ import { get, type Readable, type Writable } from 'svelte/store';
 import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
 import { mode } from 'mode-watcher';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
+import { routeRainfall } from '$lib/weather';
 
 const { distanceUnits, velocityUnits, temperatureUnits } = settings;
 
@@ -91,6 +92,9 @@ export class ElevationProfile {
                 this.updateData();
             });
             temperatureUnits.subscribe(() => {
+                this.updateData();
+            });
+            routeRainfall.subscribe(() => {
                 this.updateData();
             });
             this._additionalDatasets.subscribe(() => {
@@ -172,6 +176,11 @@ export class ElevationProfile {
                                 return `${i18n._('quantities.temperature')}: ${getTemperatureWithUnits(point.y, false)}`;
                             } else if (context.datasetIndex === 5) {
                                 return `${i18n._('quantities.power')}: ${getPowerWithUnits(point.y)}`;
+                            } else if (context.datasetIndex === 6) {
+                                const probability = (point as any).probability;
+                                return `${i18n._('toolbar.weather.rain_amount')}: ${point.y.toFixed(1)} mm${
+                                    probability === undefined ? '' : ` (${Math.round(probability)}%)`
+                                }`;
                             }
                         },
                         afterBody: (contexts: TooltipItem<'line'>[]) => {
@@ -275,6 +284,18 @@ export class ElevationProfile {
             onResize: () => {
                 this.updateOverlay();
             },
+        };
+
+        options.scales!['yrain'] = {
+            type: 'linear',
+            position: 'right',
+            grid: { display: false },
+            display: false,
+            min: 0,
+            // Ten millimetres in an hour is already heavy rain, so the scale
+            // stays put until the forecast exceeds that and the bars would
+            // otherwise leave the plot.
+            suggestedMax: 10,
         };
 
         let datasets: string[] = ['speed', 'hr', 'cad', 'atemp', 'power'];
@@ -480,6 +501,23 @@ export class ElevationProfile {
             yAxisID: 'ypower',
         };
 
+        this._chart.data.datasets[6] = {
+            type: 'bar',
+            label: i18n._('toolbar.weather.rain_amount'),
+            data: get(routeRainfall).map((entry) => ({
+                x: getConvertedDistance(entry.km, units.distance),
+                y: entry.mm,
+                probability: entry.probability,
+            })),
+            yAxisID: 'yrain',
+            // Higher order draws first, so the rain sits behind the elevation.
+            order: 2,
+            backgroundColor: 'rgba(56, 189, 248, 0.45)',
+            borderWidth: 0,
+            barPercentage: 1,
+            categoryPercentage: 1,
+        } as any;
+
         this._chart.options.scales!.x!['min'] = 0;
         this._chart.options.scales!.x!['max'] = getConvertedDistance(
             data.global.distance.total,
@@ -511,7 +549,7 @@ export class ElevationProfile {
         let includeCadence = additionalDatasets.includes('cad');
         let includeTemperature = additionalDatasets.includes('atemp');
         let includePower = additionalDatasets.includes('power');
-        if (this._chart.data.datasets.length == 6) {
+        if (this._chart.data.datasets.length >= 6) {
             this._chart.data.datasets[1].hidden = !includeSpeed;
             this._chart.data.datasets[2].hidden = !includeHeartRate;
             this._chart.data.datasets[3].hidden = !includeCadence;

@@ -1,4 +1,17 @@
+import { writable } from 'svelte/store';
 import type { GPXStatisticsGroup } from 'gpx';
+
+export type RainfallAlongRoute = {
+    /** Distance along the route, in kilometres. */
+    km: number;
+    /** Rainfall expected in the hour the point is reached, in millimetres. */
+    mm: number;
+    probability: number;
+};
+
+// Filled in by the weather tool and read by the elevation profile, so that the
+// rain shows up under the climb it will fall on.
+export const routeRainfall = writable<RainfallAlongRoute[]>([]);
 
 export type WeatherStation = {
     name: string;

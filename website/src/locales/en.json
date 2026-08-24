@@ -285,7 +285,7 @@
             "departure": "Departure",
             "arrival": "At",
             "rain_amount": "Rain",
-            "next_24h": "Rain in the 24 hours after departure",
+            "next_24h": "Rain in the 12 hours after departure",
             "total_rain": "While walking:"
         }
     },

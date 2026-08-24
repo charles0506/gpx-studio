@@ -254,7 +254,7 @@
         {@const walk = forecasts[0]}
         {@const start = departure()}
         {@const end = new Date(start.getTime() + (totalSeconds ?? 0) * 1000)}
-        {@const window = walk.times.map((t, i) => i).filter((i) => walk.times[i] >= startOfHour(start)).slice(0, 24)}
+        {@const window = walk.times.map((t, i) => i).filter((i) => walk.times[i] >= startOfHour(start)).slice(0, 12)}
         {@const max = scaleMax(window.map((i) => walk.precipitation[i] ?? 0))}
         <div class="flex flex-col gap-1">
             <Label class="flex flex-row justify-between">
@@ -300,7 +300,7 @@
                 {/if}
             </div>
             <div class="flex flex-row justify-between text-[10px] text-muted-foreground">
-                {#each [0, 6, 12, 18] as offset}
+                {#each [0, 3, 6, 9] as offset}
                     <span>{clockOf(walk.times[window[offset]] ?? start)}</span>
                 {/each}
             </div>

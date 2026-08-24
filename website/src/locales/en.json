@@ -591,6 +591,8 @@
         "download": "Download",
         "uploaded": "Uploaded {n} files.",
         "downloaded": "Loaded {n} files.",
-        "warning": "Upload replaces what is stored; download replaces what is open. There is no merge."
+        "warning": "Upload replaces what is stored; download replaces what is open. There is no merge.",
+        "slot": "Workspace",
+        "slot_name": "Name this workspace (on this device)"
     }
 }

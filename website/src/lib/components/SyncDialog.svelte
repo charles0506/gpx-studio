@@ -5,7 +5,8 @@
     import { Label } from '$lib/components/ui/label/index.js';
     import { CloudDownload, CloudUpload, KeyRound, LoaderCircle } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
-    import { collectWorkspace, download, passphrase, upload } from '$lib/sync';
+    import { collectWorkspace, download, passphrase, slot, slotLabels, slots, upload } from '$lib/sync';
+    import { User } from '@lucide/svelte';
 
     let { open = $bindable(false) }: { open: boolean } = $props();
 
@@ -37,6 +38,33 @@
         </Dialog.Header>
 
         <div class="flex flex-col gap-3">
+            <div class="flex flex-col gap-1">
+                <Label class="flex flex-row">
+                    <User size="16" />
+                    {i18n._('sync.slot')}
+                </Label>
+                <div class="flex flex-row gap-1">
+                    {#each slots as id}
+                        <Button
+                            variant={$slot === id ? 'default' : 'outline'}
+                            class="grow px-1 text-xs"
+                            onclick={() => ($slot = id)}
+                        >
+                            {$slotLabels[id] ?? id}
+                        </Button>
+                    {/each}
+                </div>
+                <Input
+                    class="text-sm"
+                    placeholder={i18n._('sync.slot_name')}
+                    value={$slotLabels[$slot] ?? ''}
+                    oninput={(event) => {
+                        const name = event.currentTarget.value.trim();
+                        slotLabels.update((labels) => ({ ...labels, [$slot]: name || $slot }));
+                    }}
+                />
+            </div>
+
             <div class="flex flex-col gap-1">
                 <Label for="sync-passphrase" class="flex flex-row">
                     <KeyRound size="16" />

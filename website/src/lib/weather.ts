@@ -56,8 +56,8 @@ export function isInTaiwan(lat: number, lon: number): boolean {
  */
 export function sampleRoute(
     statistics: GPXStatisticsGroup | undefined,
-    spacingKm: number = 5,
-    maxPoints: number = 12
+    spacingKm: number = 2,
+    maxPoints: number = 16
 ): { at: number; lat: number; lon: number }[] {
     if (!statistics?.forEachTrackPoint) {
         return [];

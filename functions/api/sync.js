@@ -9,7 +9,15 @@
 // There are no accounts. A single passphrase, held in the SYNC_SECRET
 // environment variable, guards the store — enough for one person syncing their
 // own devices, and nothing more is pretended.
-const OBJECT_KEY = 'workspace.json';
+// Four separate workspaces, picked with ?slot=. They share the passphrase:
+// this is one household, not four tenants, and pretending otherwise would mean
+// building accounts.
+const SLOTS = ['1', '2', '3', '4'];
+
+function objectKey(request) {
+    const slot = new URL(request.url).searchParams.get('slot') ?? '1';
+    return SLOTS.includes(slot) ? `workspace-${slot}.json` : undefined;
+}
 
 // The KV value ceiling. A workspace of routes is nowhere near it, and the whole
 // thing is stored as one object rather than one per file.
@@ -58,6 +66,9 @@ export async function onRequestGet({ request, env }) {
     const denied = authorise(request, env);
     if (denied) return denied;
 
+    const OBJECT_KEY = objectKey(request);
+    if (!OBJECT_KEY) return json({ error: `slot must be one of ${SLOTS.join(', ')}` }, 400);
+
     if (env.SYNC_KV) {
         const stored = await env.SYNC_KV.get(OBJECT_KEY);
         return stored === null
@@ -87,6 +98,9 @@ export async function onRequestGet({ request, env }) {
 export async function onRequestPut({ request, env }) {
     const denied = authorise(request, env);
     if (denied) return denied;
+
+    const OBJECT_KEY = objectKey(request);
+    if (!OBJECT_KEY) return json({ error: `slot must be one of ${SLOTS.join(', ')}` }, 400);
 
     const body = await request.text();
     if (body.length > MAX_BYTES) {
@@ -122,6 +136,9 @@ export async function onRequestPut({ request, env }) {
 export async function onRequestDelete({ request, env }) {
     const denied = authorise(request, env);
     if (denied) return denied;
+
+    const OBJECT_KEY = objectKey(request);
+    if (!OBJECT_KEY) return json({ error: `slot must be one of ${SLOTS.join(', ')}` }, 400);
 
     if (env.SYNC_KV) {
         await env.SYNC_KV.delete(OBJECT_KEY);

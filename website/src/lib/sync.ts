@@ -8,6 +8,12 @@ import { settings } from '$lib/logic/settings';
 // The passphrase is the only credential there is, so it stays in the browser
 // and is sent on each request rather than exchanged for a session.
 const STORAGE_KEY = 'syncPassphrase';
+const SLOT_KEY = 'syncSlot';
+const LABEL_KEY = 'syncSlotLabels';
+
+/** Four independent workspaces, sharing one passphrase. */
+export const slots = ['1', '2', '3', '4'] as const;
+export type Slot = (typeof slots)[number];
 
 function readStoredPassphrase(): string {
     if (typeof localStorage === 'undefined') {
@@ -17,6 +23,44 @@ function readStoredPassphrase(): string {
 }
 
 export const passphrase = writable(readStoredPassphrase());
+
+function readStoredSlot(): Slot {
+    if (typeof localStorage === 'undefined') {
+        return '1';
+    }
+    const stored = localStorage.getItem(SLOT_KEY);
+    return slots.includes(stored as Slot) ? (stored as Slot) : '1';
+}
+
+export const slot = writable<Slot>(readStoredSlot());
+
+slot.subscribe((value) => {
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(SLOT_KEY, value);
+    }
+});
+
+// Labels are only ever shown, never sent, so they live on the device. Naming a
+// slot on the phone does not rename it on the desktop, which is a fair trade
+// for not having to store them server-side.
+function readStoredLabels(): Record<string, string> {
+    if (typeof localStorage === 'undefined') {
+        return {};
+    }
+    try {
+        return JSON.parse(localStorage.getItem(LABEL_KEY) ?? '{}');
+    } catch (error) {
+        return {};
+    }
+}
+
+export const slotLabels = writable<Record<string, string>>(readStoredLabels());
+
+slotLabels.subscribe((value) => {
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(LABEL_KEY, JSON.stringify(value));
+    }
+});
 
 passphrase.subscribe((value) => {
     if (typeof localStorage === 'undefined') {
@@ -45,7 +89,7 @@ async function request(method: 'GET' | 'PUT' | 'DELETE', body?: string): Promise
         throw new Error('missing passphrase');
     }
 
-    const response = await fetch('/api/sync', {
+    const response = await fetch(`/api/sync?slot=${get(slot)}`, {
         method,
         headers: {
             Authorization: `Bearer ${secret}`,

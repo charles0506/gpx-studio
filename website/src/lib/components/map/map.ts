@@ -1,3 +1,4 @@
+import { livePosition } from '$lib/live-position';
 import * as maplibregl from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import workerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
@@ -101,15 +102,30 @@ export class MapLibreGLMap {
             map.addControl(geocoder);
         }
         if (geolocate) {
-            map.addControl(
-                new maplibregl.GeolocateControl({
-                    positionOptions: {
-                        enableHighAccuracy: true,
-                    },
-                    fitBoundsOptions,
-                    trackUserLocation: true,
-                })
-            );
+            const geolocateControl = new maplibregl.GeolocateControl({
+                positionOptions: {
+                    enableHighAccuracy: true,
+                },
+                fitBoundsOptions,
+                trackUserLocation: true,
+            });
+
+            // Feed the elevation profile from the control that is already
+            // watching, rather than opening a second watcher: one permission
+            // prompt, one battery cost, and the dot on the map and the marker on
+            // the profile can never disagree.
+            geolocateControl.on('geolocate', (event: any) => {
+                livePosition.set({
+                    lat: event.coords.latitude,
+                    lon: event.coords.longitude,
+                    accuracy: event.coords.accuracy,
+                    at: new Date(event.timestamp ?? Date.now()),
+                });
+            });
+            geolocateControl.on('trackuserlocationend', () => livePosition.set(undefined));
+            geolocateControl.on('error', () => livePosition.set(undefined));
+
+            map.addControl(geolocateControl);
         }
         const scaleControl = new maplibregl.ScaleControl({
             unit: get(distanceUnits),

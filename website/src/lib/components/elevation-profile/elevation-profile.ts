@@ -25,6 +25,7 @@ import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
 import { mode } from 'mode-watcher';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
 import { departureTime, routeRainfall } from '$lib/weather';
+import { livePosition, progressAlongRoute } from '$lib/live-position';
 import { cumulativeHikingTime, secondsAt, type HikingTimePoint } from '$lib/hiking-time';
 
 const { distanceUnits, velocityUnits, temperatureUnits } = settings;
@@ -130,6 +131,9 @@ export class ElevationProfile {
             });
             departureTime.subscribe(() => {
                 this.updateData();
+            });
+            livePosition.subscribe(() => {
+                this.updateOverlay();
             });
             this._additionalDatasets.subscribe(() => {
                 this.updateDataVisibility();
@@ -604,6 +608,42 @@ export class ElevationProfile {
         return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
     }
 
+    // Where the walker is, marked on the profile. Drawn after the selection
+    // shading so it stays visible over it.
+    private drawLivePosition() {
+        const progress = progressAlongRoute(get(livePosition));
+        if (!progress || !this._chart) {
+            return;
+        }
+
+        const context = this._overlay.getContext("2d");
+        if (!context) {
+            return;
+        }
+
+        const x = this._chart.scales.x.getPixelForValue(
+            getConvertedDistance(progress.km, get(distanceUnits))
+        );
+        const { top, height } = this._chart.chartArea;
+
+        context.save();
+        context.globalAlpha = 1;
+        // Amber rather than the theme colour: this is where you are, not part
+        // of the data.
+        context.strokeStyle = '#f59e0b';
+        context.lineWidth = 2;
+        context.beginPath();
+        context.moveTo(x, top);
+        context.lineTo(x, top + height);
+        context.stroke();
+
+        context.fillStyle = '#f59e0b';
+        context.beginPath();
+        context.arc(x, top, 4, 0, Math.PI * 2);
+        context.fill();
+        context.restore();
+    }
+
     setVisibility() {
         if (!this._chart) {
             return;
@@ -702,6 +742,8 @@ export class ElevationProfile {
                 selectionContext.clearRect(0, 0, this._overlay.width, this._overlay.height);
             }
         }
+
+        this.drawLivePosition();
     }
 
     slopeFillCallback(context: ScriptableLineSegmentContext & { p0: { raw: any } }) {

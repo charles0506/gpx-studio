@@ -4,7 +4,7 @@
     import {
         climbAt,
         climbGainSoFar,
-        findClimbs,
+        findClimbsAndDescents,
         gradientColour,
         nextClimb,
         type Climb,
@@ -18,13 +18,16 @@
     } from '$lib/live-position';
     import { cumulativeHikingTime, secondsAt } from '$lib/hiking-time';
     import { map } from '$lib/components/map/map';
-    import { TrendingUp } from '@lucide/svelte';
+    import { TrendingDown, TrendingUp } from '@lucide/svelte';
 
     // Reading the climb should not mean keeping a toolbar panel open on a phone
     // in the rain, so it rides on the map. A fix places you on the route while
     // walking; at the kitchen table the profile's cursor stands in for one, so
     // the same screen answers "what is this hill like" before you set off.
-    let climbs = $derived(findClimbs($gpxStatistics));
+    // Descents are shown on the same screen: the knees pay for a long steep
+    // drop as surely as the lungs pay for the climb, and switching panels
+    // halfway down a 古道 is not something anyone does.
+    let climbs = $derived(findClimbsAndDescents($gpxStatistics));
     let progress = $derived(progressAlongRoute($livePosition));
     let walkingCurve = $derived(cumulativeHikingTime($gpxStatistics));
 
@@ -37,6 +40,11 @@
     let tracking = $derived(progress !== undefined);
 
     let gained = $derived(current && here !== undefined ? climbGainSoFar(current, here) : 0);
+
+    // Numbered within its own kind, the way a watch counts them: the second
+    // descent of the day is "2/3", not "4/6".
+    let ofKind = $derived(current ? climbs.filter((c) => c.kind === current.kind) : []);
+    let position = $derived(current ? ofKind.indexOf(current) + 1 : 0);
 
     let remaining = $derived.by(() => {
         if (!current || here === undefined) {
@@ -258,7 +266,8 @@
 </script>
 
 {#if visible && current && remaining}
-    {@const colour = gradientColour(current.gradient)}
+    {@const colour = gradientColour(current.gradient, current.kind)}
+    {@const falling = current.kind === 'descent'}
     <div
         class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
     >
@@ -269,10 +278,14 @@
                 : 'bg-background/95'} rounded-md shadow-md px-3 py-1.5 flex flex-col gap-1"
         >
             <div class="flex flex-row items-center gap-2 text-xs text-muted-foreground">
-                <TrendingUp size="14" style="color: {colour}" />
+                {#if falling}
+                    <TrendingDown size="14" style="color: {colour}" />
+                {:else}
+                    <TrendingUp size="14" style="color: {colour}" />
+                {/if}
                 <span>
-                    {i18n._('toolbar.climbs.climb')}
-                    {climbs.indexOf(current) + 1}/{climbs.length}
+                    {i18n._(falling ? 'toolbar.climbs.descent' : 'toolbar.climbs.climb')}
+                    {position}/{ofKind.length}
                 </span>
                 <span class="grow"></span>
                 {#if elapsed !== undefined}
@@ -297,11 +310,15 @@
                         class="text-2xl font-semibold leading-none tabular-nums"
                         style="color: {colour}"
                     >
-                        {remaining.gain}<span class="text-sm ml-0.5">↑</span>
+                        {remaining.gain}<span class="text-sm ml-0.5">{falling ? '↓' : '↑'}</span>
                     </span>
                     {#if expanded}
                         <span class="text-[10px] leading-none text-muted-foreground">
-                            {i18n._('toolbar.climbs.remaining_gain')}
+                            {i18n._(
+                                falling
+                                    ? 'toolbar.climbs.remaining_descent'
+                                    : 'toolbar.climbs.remaining_gain'
+                            )}
                         </span>
                     {/if}
                 </div>
@@ -358,13 +375,14 @@
                         <span
                             class="absolute left-1 top-0.5 text-[10px] leading-none text-slate-700 bg-white/70 rounded px-1"
                         >
-                            {i18n._('toolbar.climbs.summit')}
-                            {current.endElevation} m
+                            {falling ? '' : i18n._('toolbar.climbs.summit')}
+                            {Math.max(current.startElevation, current.endElevation)} m
                         </span>
                         <span
                             class="absolute left-1 bottom-0.5 text-[10px] leading-none text-slate-700 bg-white/70 rounded px-1"
                         >
-                            {current.startElevation} m
+                            {falling ? i18n._('toolbar.climbs.bottom') : ''}
+                            {Math.min(current.startElevation, current.endElevation)} m
                         </span>
                         <span
                             class="absolute text-[10px] leading-none text-white bg-slate-900/85 rounded px-1 -translate-x-1/2 -translate-y-full"
@@ -380,7 +398,7 @@
                     <span
                         class="absolute right-1 bottom-0.5 text-[10px] leading-none text-slate-700 bg-white/70 rounded px-1"
                     >
-                        {shape.markerGradient}%
+                        {Math.abs(shape.markerGradient)}%
                     </span>
                 </button>
             {/if}
@@ -388,15 +406,19 @@
             <div
                 class="flex flex-row justify-between gap-3 text-[10px] leading-none text-muted-foreground"
             >
-                <span>{i18n._('toolbar.climbs.climbed')} +{gained} m</span>
+                <span>
+                    {i18n._(falling ? 'toolbar.climbs.descended' : 'toolbar.climbs.climbed')}
+                    {falling ? '' : '+'}{gained} m
+                </span>
                 <span>{minutes(remaining.seconds)}</span>
-                {#if climbRate !== undefined}
+                {#if climbRate !== undefined && !falling}
                     <span>{i18n._('toolbar.climbs.vertical_speed')} {climbRate}↑</span>
                 {/if}
             </div>
         </div>
     </div>
 {:else if visible && upcoming && here !== undefined}
+    {@const ahead = upcoming.kind === 'descent'}
     <div
         class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
     >
@@ -404,12 +426,22 @@
             bind:clientHeight={cardHeight}
             class="bg-background/95 rounded-md shadow-md px-2.5 py-1.5 text-sm flex flex-row items-center gap-2 whitespace-nowrap"
         >
-            <TrendingUp size="16" style="color: {gradientColour(upcoming.gradient)}" />
+            {#if ahead}
+                <TrendingDown
+                    size="16"
+                    style="color: {gradientColour(upcoming.gradient, upcoming.kind)}"
+                />
+            {:else}
+                <TrendingUp
+                    size="16"
+                    style="color: {gradientColour(upcoming.gradient, upcoming.kind)}"
+                />
+            {/if}
             <span>
-                {i18n._('toolbar.climbs.next')}
+                {i18n._(ahead ? 'toolbar.climbs.next_descent' : 'toolbar.climbs.next')}
                 {(upcoming.startKm - here).toFixed(2)} km {i18n._('toolbar.climbs.ahead')}
             </span>
-            <span>↗ {upcoming.gain} m</span>
+            <span>{ahead ? '↘' : '↗'} {upcoming.gain} m</span>
             <span>{upcoming.gradient}%</span>
         </div>
     </div>

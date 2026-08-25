@@ -7,7 +7,8 @@
         climbAt,
         climbGainSoFar,
         climbProgress,
-        findClimbs,
+        descentScale,
+        findClimbsAndDescents,
         gradientColour,
         gradientScale,
         nextClimb,
@@ -20,21 +21,28 @@
         class?: string;
     } = $props();
 
-    // Read off the same table the shading uses, so the key cannot drift from
+    // Read off the same tables the shading uses, so the key cannot drift from
     // what is drawn.
-    let key = $derived(
-        gradientScale.map((step, index) => ({
+    const keyOf = (scale: { from: number; colour: string }[]) =>
+        scale.map((step, index) => ({
             colour: step.colour,
             label:
                 index === 0
-                    ? `<${gradientScale[1].from}`
-                    : index === gradientScale.length - 1
+                    ? `<${scale[1].from}`
+                    : index === scale.length - 1
                       ? `${step.from}+`
                       : `${step.from}`,
-        }))
-    );
+        }));
+    let key = $derived(keyOf(gradientScale));
+    let descentKey = $derived(keyOf(descentScale));
 
-    let climbs = $derived(findClimbs($gpxStatistics));
+    let climbs = $derived(findClimbsAndDescents($gpxStatistics));
+    // Numbered within its own kind, as the map panel numbers them: the second
+    // descent of the day is the second descent, not the fourth thing.
+    let ordinals = $derived.by(() => {
+        const counts = { climb: 0, descent: 0 };
+        return climbs.map((climb) => (counts[climb.kind] += 1));
+    });
     let progress = $derived(progressAlongRoute($livePosition));
     let walkingCurve = $derived(cumulativeHikingTime($gpxStatistics));
 
@@ -135,12 +143,15 @@
                             (secondsAt(walkingCurve, climb.endKm) ?? 0) -
                             (secondsAt(walkingCurve, climb.startKm) ?? 0)}
                         <tr class="border-t" class:font-medium={current === climb}>
-                            <td class="pr-2 py-1">
+                            <td class="pr-2 py-1 whitespace-nowrap">
                                 <span
                                     class="inline-block w-2 h-2 rounded-full mr-1"
-                                    style="background-color: {gradientColour(climb.gradient)}"
+                                    style="background-color: {gradientColour(
+                                        climb.gradient,
+                                        climb.kind
+                                    )}"
                                 ></span>
-                                {index + 1}
+                                {climb.kind === 'descent' ? '↓' : '↑'}{ordinals[index]}
                             </td>
                             <td class="pr-2 py-1 whitespace-nowrap"
                                 >{climb.startKm.toFixed(1)} km</td
@@ -148,7 +159,9 @@
                             <td class="pr-2 py-1 whitespace-nowrap">
                                 {(climb.endKm - climb.startKm).toFixed(2)} km
                             </td>
-                            <td class="pr-2 py-1 whitespace-nowrap">{climb.gain} m</td>
+                            <td class="pr-2 py-1 whitespace-nowrap">
+                                {climb.kind === 'descent' ? '−' : '+'}{climb.gain} m
+                            </td>
                             <td class="pr-2 py-1 whitespace-nowrap">{climb.gradient}%</td>
                             <td class="py-1 whitespace-nowrap">{duration(seconds)}</td>
                         </tr>
@@ -161,6 +174,13 @@
             <Label class="text-xs">{i18n._('toolbar.climbs.gradient')} (%)</Label>
             <div class="flex flex-row">
                 {#each key as band}
+                    <div class="grow flex flex-col items-center gap-0.5">
+                        <span class="w-full h-2" style="background-color: {band.colour}"></span>
+                    </div>
+                {/each}
+            </div>
+            <div class="flex flex-row">
+                {#each descentKey as band}
                     <div class="grow flex flex-col items-center gap-0.5">
                         <span class="w-full h-2" style="background-color: {band.colour}"></span>
                         <span class="text-[10px] text-muted-foreground">{band.label}</span>

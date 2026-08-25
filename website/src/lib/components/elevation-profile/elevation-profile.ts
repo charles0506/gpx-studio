@@ -26,7 +26,7 @@ import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/col
 import { departureTime, routeRainfall } from '$lib/weather';
 import { livePosition, progressAlongRoute } from '$lib/live-position';
 import { climbCursorKm } from '$lib/climb-view';
-import { findClimbs, gradientColour } from '$lib/climbs';
+import { findClimbsAndDescents, gradientColour } from '$lib/climbs';
 import { cumulativeHikingTime, secondsAt, type HikingTimePoint } from '$lib/hiking-time';
 
 const { distanceUnits, velocityUnits, temperatureUnits } = settings;
@@ -640,11 +640,12 @@ export class ElevationProfile {
         return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
     }
 
-    // Each climb gets a band along the foot of the chart, coloured by how
-    // steep it is — the same read as a ClimbPro screen, in the place the
-    // profile already occupies.
+    // Each climb and each descent gets a band along the foot of the chart,
+    // coloured by how steep it is — the same read as a ClimbPro screen, in the
+    // place the profile already occupies. Descents are in the cold half of the
+    // palette, so which way a band goes needs no legend.
     private drawClimbs() {
-        const climbs = findClimbs(get(this._gpxStatistics));
+        const climbs = findClimbsAndDescents(get(this._gpxStatistics));
         if (climbs.length === 0 || !this._chart) {
             return;
         }
@@ -666,7 +667,7 @@ export class ElevationProfile {
             const to = this._chart.scales.x.getPixelForValue(
                 getConvertedDistance(climb.endKm, units)
             );
-            context.fillStyle = gradientColour(climb.gradient);
+            context.fillStyle = gradientColour(climb.gradient, climb.kind);
             context.fillRect(from, bottom - height, Math.max(1, to - from), height);
         }
         context.restore();

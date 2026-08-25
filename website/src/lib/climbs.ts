@@ -1,19 +1,24 @@
 import type { GPXStatisticsGroup } from 'gpx';
 
 // A ClimbPro-style breakdown: rather than one long profile to squint at, the
-// route is cut into the climbs that actually cost something, each with its own
-// length, gain and steepness, so you know what is in front of you and how much
-// of it is left.
+// route is cut into the stretches that actually cost something, each with its
+// own length, gain and steepness, so you know what is in front of you and how
+// much of it is left. Descents are cut the same way and by the same rules read
+// upside down — on a 古道 the knees pay for a long steep drop as surely as the
+// lungs pay for the climb.
+
+export type SegmentKind = 'climb' | 'descent';
 
 export type Climb = {
-    /** Distance along the route where the climb starts and ends, in kilometres. */
+    kind: SegmentKind;
+    /** Distance along the route where it starts and ends, in kilometres. */
     startKm: number;
     endKm: number;
     startElevation: number;
     endElevation: number;
-    /** Metres gained, ignoring the dips inside the climb. */
+    /** Metres gained or lost, always positive, ignoring the dips inside. */
     gain: number;
-    /** Mean gradient over the climb, as a percentage. */
+    /** Mean gradient, as a percentage, always positive. */
     gradient: number;
     /**
      * Garmin and the cycling world both score a climb by length times gradient.
@@ -23,8 +28,8 @@ export type Climb = {
     score: number;
     category: 1 | 2 | 3 | 4;
     /**
-     * The climb's own profile, thinned to something a sparkline can use. Drawing
-     * the whole route to show one climb is what a watch face refuses to do, and
+     * Its own profile, thinned to something a sparkline can use. Drawing the
+     * whole route to show one climb is what a watch face refuses to do, and
      * rightly: what matters on the way up is the shape of this climb alone.
      */
     profile: Sample[];
@@ -52,28 +57,14 @@ function categorise(score: number): 1 | 2 | 3 | 4 {
     return 4;
 }
 
-/**
- * Find the climbs on a route. Each step of the route scores what it gains less
- * what a gentle approach would have gained over the same ground, and the climbs
- * are the stretches where that score runs positive — the largest-sum runs, in
- * other words, which is Kadane's algorithm with a drawdown rule to close a
- * climb once the ground has fallen far enough that the rise is over rather than
- * merely interrupted.
- *
- * Trimming the approach matters on a route that drifts uphill for ten
- * kilometres and then rears up at the end: counted whole it is one climb at
- * 2%, which describes neither half of it.
- */
-export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] {
+// A recorded route can carry a run of zeroes where the device had no fix yet,
+// and gpx.studio itself writes zero until the elevation tool has run. Sea level
+// is not a plausible reading on these routes, and taking it literally invents a
+// climb out of the first few hundred metres, so treat it as missing.
+function samplesOf(statistics: GPXStatisticsGroup | undefined): Sample[] {
     if (!statistics?.forEachTrackPoint) {
         return [];
     }
-
-    // A recorded route can carry a run of zeroes where the device had no fix
-    // yet, and gpx.studio itself writes zero until the elevation tool has run.
-    // Sea level is not a plausible reading on these routes, and taking it
-    // literally invents a climb out of the first few hundred metres, so treat
-    // it as missing.
     const samples: Sample[] = [];
     statistics.forEachTrackPoint((point, distance) => {
         const elevation = point.ele;
@@ -81,11 +72,34 @@ export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] 
             samples.push({ km: distance, elevation });
         }
     });
+    return samples;
+}
+
+/**
+ * Find the climbs, or the descents, on a route. Each step scores what it gains
+ * less what a gentle approach would have gained over the same ground, and the
+ * climbs are the stretches where that score runs positive — the largest-sum
+ * runs, in other words, which is Kadane's algorithm with a drawdown rule to
+ * close a climb once the ground has fallen far enough that the rise is over
+ * rather than merely interrupted.
+ *
+ * Trimming the approach matters on a route that drifts uphill for ten
+ * kilometres and then rears up at the end: counted whole it is one climb at
+ * 2%, which describes neither half of it.
+ *
+ * Descents run the identical algorithm over negated elevations, so everything
+ * said above holds with the hill turned upside down.
+ */
+function findSegments(samples: Sample[], kind: SegmentKind): Climb[] {
     if (samples.length < 2) {
         return [];
     }
 
-    const climbs: Climb[] = [];
+    // Uphill in the algorithm's terms, whichever way the ground actually goes.
+    const rise = kind === 'climb' ? 1 : -1;
+    const up = (sample: Sample) => sample.elevation * rise;
+
+    const segments: Climb[] = [];
 
     // Enough to keep the shape, few enough to put in an SVG path attribute.
     const MAX_PROFILE_POINTS = 64;
@@ -99,32 +113,33 @@ export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] 
         return Array.from({ length: MAX_PROFILE_POINTS }, (_, i) => within[Math.round(i * step)]);
     };
 
-    const close = (start: Sample, peak: Sample) => {
-        const gain = peak.elevation - start.elevation;
-        const length = peak.km - start.km;
+    const close = (start: Sample, top: Sample) => {
+        const gain = up(top) - up(start);
+        const length = top.km - start.km;
         if (gain < MINIMUM_GAIN || length <= 0) {
             return;
         }
         const gradient = (gain / (length * 1000)) * 100;
         const score = length * 1000 * gradient;
-        climbs.push({
+        segments.push({
+            kind,
             startKm: start.km,
-            endKm: peak.km,
+            endKm: top.km,
             startElevation: Math.round(start.elevation),
-            endElevation: Math.round(peak.elevation),
+            endElevation: Math.round(top.elevation),
             gain: Math.round(gain),
             gradient: Math.round(gradient * 10) / 10,
             score: Math.round(score),
             category: categorise(score),
-            profile: thin(start, peak),
+            profile: thin(start, top),
         });
     };
 
     let start = samples[0];
-    // The highest ground since the climb began, which is what a dip is measured
-    // against, and the point the climb is worth the most at, which is where it
-    // ends: they part company when a summit gives way to a level ridge, and it
-    // is the second that a watch calls the top.
+    // The highest ground since it began, which is what a dip is measured
+    // against, and the point it is worth the most at, which is where it ends:
+    // they part company when a summit gives way to a level ridge, and it is the
+    // second that a watch calls the top.
     let peak = samples[0];
     let top = samples[0];
     let running = 0;
@@ -134,9 +149,9 @@ export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] 
         const previous = samples[i - 1];
         const sample = samples[i];
         const metres = Math.max((sample.km - previous.km) * 1000, 0);
-        running += sample.elevation - previous.elevation - (metres * APPROACH_GRADIENT) / 100;
+        running += up(sample) - up(previous) - (metres * APPROACH_GRADIENT) / 100;
 
-        if (sample.elevation > peak.elevation) {
+        if (up(sample) > up(peak)) {
             peak = sample;
         }
         if (running > best) {
@@ -144,11 +159,11 @@ export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] 
             top = sample;
         }
 
-        // The climb is over once the ground has fallen away from its high point
-        // — in plain metres, since the approach charge would make a long shallow
-        // dip look like a descent — or once what has been walked no longer
-        // outruns an approach at all.
-        if (running <= 0 || peak.elevation - sample.elevation >= MAXIMUM_DIP) {
+        // It is over once the ground has fallen away from its high point — in
+        // plain metres, since the approach charge would make a long shallow dip
+        // look like a descent — or once what has been walked no longer outruns
+        // an approach at all.
+        if (running <= 0 || up(peak) - up(sample) >= MAXIMUM_DIP) {
             close(start, top);
             running = 0;
             best = 0;
@@ -159,7 +174,26 @@ export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] 
     }
     close(start, top);
 
-    return climbs;
+    return segments;
+}
+
+export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] {
+    return findSegments(samplesOf(statistics), 'climb');
+}
+
+export function findDescents(statistics: GPXStatisticsGroup | undefined): Climb[] {
+    return findSegments(samplesOf(statistics), 'descent');
+}
+
+/**
+ * Both, in the order they are walked. The route is read once for the two, since
+ * this runs on every fix.
+ */
+export function findClimbsAndDescents(statistics: GPXStatisticsGroup | undefined): Climb[] {
+    const samples = samplesOf(statistics);
+    return [...findSegments(samples, 'climb'), ...findSegments(samples, 'descent')].sort(
+        (a, b) => a.startKm - b.startKm
+    );
 }
 
 /** The climb a distance falls inside, if any. */
@@ -192,7 +226,8 @@ export function climbGainSoFar(climb: Climb, km: number): number {
         }
         here = sample.elevation;
     }
-    return Math.max(0, Math.round(here - climb.startElevation));
+    const rise = climb.kind === 'climb' ? 1 : -1;
+    return Math.max(0, Math.round((here - climb.startElevation) * rise));
 }
 
 /** How far through a climb a distance is, from 0 to 1. */
@@ -220,10 +255,31 @@ export const gradientScale: { from: number; colour: string }[] = [
     { from: 35, colour: '#7f1d1d' },
 ];
 
-export function gradientColour(gradient: number): string {
-    let colour = gradientScale[0].colour;
-    for (const step of gradientScale) {
-        if (gradient >= step.from) {
+/**
+ * Descents get their own ladder, in cold colours. A steep drop is its own kind
+ * of hard, and painting it in the reds would say "climb" at a glance to
+ * whichever part of the brain reads a profile before the labels.
+ */
+export const descentScale: { from: number; colour: string }[] = [
+    { from: 0, colour: '#67e8f9' },
+    { from: 4, colour: '#38bdf8' },
+    { from: 7, colour: '#0ea5e9' },
+    { from: 10, colour: '#2563eb' },
+    { from: 15, colour: '#4f46e5' },
+    { from: 25, colour: '#6d28d9' },
+    { from: 35, colour: '#4c1d95' },
+];
+
+export function scaleFor(kind: SegmentKind): { from: number; colour: string }[] {
+    return kind === 'climb' ? gradientScale : descentScale;
+}
+
+/** The colour for a gradient, given as a positive percentage either way. */
+export function gradientColour(gradient: number, kind: SegmentKind = 'climb'): string {
+    const scale = scaleFor(kind);
+    let colour = scale[0].colour;
+    for (const step of scale) {
+        if (Math.abs(gradient) >= step.from) {
             colour = step.colour;
         }
     }

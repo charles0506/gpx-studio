@@ -5,11 +5,13 @@
     import { gpxStatistics } from '$lib/logic/statistics';
     import {
         climbAt,
+        climbGainSoFar,
         climbProgress,
         findClimbs,
         gradientColour,
         gradientScale,
         nextClimb,
+        type Climb,
     } from '$lib/climbs';
     import { livePosition, progressAlongRoute } from '$lib/live-position';
     import { cumulativeHikingTime, secondsAt } from '$lib/hiking-time';
@@ -48,19 +50,21 @@
         return hours > 0 ? `${hours} h ${minutes % 60} min` : `${minutes} min`;
     }
 
-    // What the climb still costs from where you are standing.
-    function remainingOf(climb: { startKm: number; endKm: number; gain: number }): {
+    // What the climb still costs from where you are standing. The ascent left
+    // is measured against the climb's own profile rather than pro-rated from
+    // the distance left, which would flatter you on a climb that starts gently
+    // and steepens.
+    function remainingOf(climb: Climb): {
         km: number;
         gain: number;
         seconds: number | undefined;
     } {
         const from = progress ? Math.max(progress.km, climb.startKm) : climb.startKm;
-        const share = 1 - climbProgress(climb as any, from);
         const startSeconds = secondsAt(walkingCurve, from);
         const endSeconds = secondsAt(walkingCurve, climb.endKm);
         return {
             km: Math.max(0, climb.endKm - from),
-            gain: Math.round(climb.gain * share),
+            gain: Math.max(0, climb.gain - climbGainSoFar(climb, from)),
             seconds:
                 startSeconds !== undefined && endSeconds !== undefined
                     ? Math.max(0, endSeconds - startSeconds)

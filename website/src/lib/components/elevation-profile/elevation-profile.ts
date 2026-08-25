@@ -115,6 +115,10 @@ export class ElevationProfile {
             this.initialize();
 
             this._gpxStatistics.subscribe(() => {
+                // A different route: where the last one was pointed at means
+                // nothing here, and left alone it points the climb screen at a
+                // stretch of the new route that has no climb on it.
+                climbCursorKm.set(undefined);
                 this.updateData();
             });
             this._slicedGPXStatistics.subscribe(() => {

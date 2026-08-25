@@ -132,8 +132,8 @@ export class MapLibreGLMap {
                     accuracy: event.coords.accuracy,
                     at: new Date(event.timestamp ?? Date.now()),
                 };
-                livePosition.set(position);
-
+                // Recorded before the store is set, so that whatever recomputes
+                // on the new position reads a history that already has it in.
                 // Vertical speed is read from ascent behind you rather than from
                 // the GPS altitude, which wanders by tens of metres while you
                 // stand still.
@@ -141,6 +141,8 @@ export class MapLibreGLMap {
                 if (progress) {
                     recordProgress(progress.gain, position.at);
                 }
+
+                livePosition.set(position);
             });
             geolocateControl.on('trackuserlocationstart', () => {
                 trackingSince.set(new Date());

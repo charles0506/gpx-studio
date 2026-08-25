@@ -380,7 +380,6 @@
                     <span
                         class="absolute right-1 bottom-0.5 text-[10px] leading-none text-slate-700 bg-white/70 rounded px-1"
                     >
-                        {i18n._('toolbar.climbs.now')}
                         {shape.markerGradient}%
                     </span>
                 </button>

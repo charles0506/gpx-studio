@@ -301,11 +301,11 @@
             "attribution": "爬升 60 公尺以上才算一段；坡度低於 3% 的路段算接近段，不併入爬坡；中間下降不超過 25 公尺不會拆成兩段。",
             "climb": "爬升",
             "climb_screen": "爬坡畫面",
-            "average": "平均",
             "vertical_speed": "垂直速度",
             "remaining_distance": "剩餘距離",
             "remaining_gain": "剩餘爬升",
             "summit": "頂點",
+            "now": "當下",
             "climbed": "已爬",
             "to_go": "還要爬"
         }

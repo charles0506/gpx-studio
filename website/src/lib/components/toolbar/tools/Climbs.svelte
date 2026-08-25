@@ -3,13 +3,34 @@
     import { MountainSnow, Navigation } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { gpxStatistics } from '$lib/logic/statistics';
-    import { climbAt, climbProgress, findClimbs, gradientColour, nextClimb } from '$lib/climbs';
+    import {
+        climbAt,
+        climbProgress,
+        findClimbs,
+        gradientColour,
+        gradientScale,
+        nextClimb,
+    } from '$lib/climbs';
     import { livePosition, progressAlongRoute } from '$lib/live-position';
     import { cumulativeHikingTime, secondsAt } from '$lib/hiking-time';
 
     let props: {
         class?: string;
     } = $props();
+
+    // Read off the same table the shading uses, so the key cannot drift from
+    // what is drawn.
+    let key = $derived(
+        gradientScale.map((step, index) => ({
+            colour: step.colour,
+            label:
+                index === 0
+                    ? `<${gradientScale[1].from}`
+                    : index === gradientScale.length - 1
+                      ? `${step.from}+`
+                      : `${step.from}`,
+        }))
+    );
 
     let climbs = $derived(findClimbs($gpxStatistics));
     let progress = $derived(progressAlongRoute($livePosition));
@@ -117,7 +138,9 @@
                                 ></span>
                                 {index + 1}
                             </td>
-                            <td class="pr-2 py-1 whitespace-nowrap">{climb.startKm.toFixed(1)} km</td>
+                            <td class="pr-2 py-1 whitespace-nowrap"
+                                >{climb.startKm.toFixed(1)} km</td
+                            >
                             <td class="pr-2 py-1 whitespace-nowrap">
                                 {(climb.endKm - climb.startKm).toFixed(2)} km
                             </td>
@@ -128,6 +151,18 @@
                     {/each}
                 </tbody>
             </table>
+        </div>
+
+        <div class="flex flex-col gap-1">
+            <Label class="text-xs">{i18n._('toolbar.climbs.gradient')} (%)</Label>
+            <div class="flex flex-row">
+                {#each key as band}
+                    <div class="grow flex flex-col items-center gap-0.5">
+                        <span class="w-full h-2" style="background-color: {band.colour}"></span>
+                        <span class="text-[10px] text-muted-foreground">{band.label}</span>
+                    </div>
+                {/each}
+            </div>
         </div>
 
         <span class="text-xs text-muted-foreground">

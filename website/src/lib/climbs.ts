@@ -210,12 +210,22 @@ export function climbProgress(climb: Climb, km: number): number {
  * climbs average 30% and a single band would paint every one of them the same
  * red, so the steps above 15% are what tells a hard climb from a staircase.
  */
+export const gradientScale: { from: number; colour: string }[] = [
+    { from: 0, colour: '#84cc16' },
+    { from: 4, colour: '#eab308' },
+    { from: 7, colour: '#f59e0b' },
+    { from: 10, colour: '#ea580c' },
+    { from: 15, colour: '#dc2626' },
+    { from: 25, colour: '#b91c1c' },
+    { from: 35, colour: '#7f1d1d' },
+];
+
 export function gradientColour(gradient: number): string {
-    if (gradient >= 35) return '#7f1d1d';
-    if (gradient >= 25) return '#b91c1c';
-    if (gradient >= 15) return '#dc2626';
-    if (gradient >= 10) return '#ea580c';
-    if (gradient >= 7) return '#f59e0b';
-    if (gradient >= 4) return '#eab308';
-    return '#84cc16';
+    let colour = gradientScale[0].colour;
+    for (const step of gradientScale) {
+        if (gradient >= step.from) {
+            colour = step.colour;
+        }
+    }
+    return colour;
 }

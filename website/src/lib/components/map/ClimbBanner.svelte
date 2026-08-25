@@ -160,6 +160,8 @@
         markerY: number;
         /** Height above sea level under the marker, in metres. */
         markerElevation: number;
+        /** How steep the ground is under the marker, as a percentage. */
+        markerGradient: number;
     };
 
     function shapeOf(climb: Climb, at: number, w: number, h: number): Shape | undefined {
@@ -178,15 +180,19 @@
         const x = (km: number) => ((km - firstKm) / span) * w;
         const y = (elevation: number) => h - ((elevation - low) / rise) * (h - 5) - 2;
 
-        const bands = [];
-        for (let i = 0; i + 1 < profile.length; i += 1) {
-            const middle = (profile[i].km + profile[i + 1].km) / 2;
-            let from = i;
-            let to = i + 1;
+        const gradientAt = (index: number) => {
+            const middle = (profile[index].km + profile[index + 1].km) / 2;
+            let from = index;
+            let to = index + 1;
             while (from > 0 && middle - profile[from].km < HALF_WINDOW_KM) from -= 1;
             while (to < profile.length - 1 && profile[to].km - middle < HALF_WINDOW_KM) to += 1;
             const run = Math.max((profile[to].km - profile[from].km) * 1000, 1);
-            const gradient = ((profile[to].elevation - profile[from].elevation) / run) * 100;
+            return ((profile[to].elevation - profile[from].elevation) / run) * 100;
+        };
+
+        const bands = [];
+        for (let i = 0; i + 1 < profile.length; i += 1) {
+            const gradient = gradientAt(i);
 
             const x0 = x(profile[i].km);
             const x1 = x(profile[i + 1].km);
@@ -202,10 +208,12 @@
         const km = Math.min(Math.max(at, firstKm), lastKm);
         let before = profile[0];
         let after = profile[profile.length - 1];
+        let segment = 0;
         for (let i = 0; i + 1 < profile.length; i += 1) {
             if (profile[i].km <= km && km <= profile[i + 1].km) {
                 before = profile[i];
                 after = profile[i + 1];
+                segment = i;
                 break;
             }
         }
@@ -223,6 +231,7 @@
             markerX: x(km),
             markerY: y(elevation),
             markerElevation: Math.round(elevation),
+            markerGradient: Math.round(gradientAt(segment) * 10) / 10,
         };
     }
 
@@ -371,8 +380,8 @@
                     <span
                         class="absolute right-1 bottom-0.5 text-[10px] leading-none text-slate-700 bg-white/70 rounded px-1"
                     >
-                        {i18n._('toolbar.climbs.average')}
-                        {current.gradient}%
+                        {i18n._('toolbar.climbs.now')}
+                        {shape.markerGradient}%
                     </span>
                 </button>
             {/if}

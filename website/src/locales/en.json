@@ -301,11 +301,11 @@
             "attribution": "A climb is counted from 60 m of gain; ground rising slower than 3% is approach rather than climb; dips under 25 m do not split one in two.",
             "climb": "Climb",
             "climb_screen": "Climb screen",
-            "average": "avg",
             "vertical_speed": "VAM",
             "remaining_distance": "Distance left",
             "remaining_gain": "Climb left",
             "summit": "Summit",
+            "now": "now",
             "climbed": "climbed",
             "to_go": "to go"
         }

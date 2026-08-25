@@ -311,6 +311,7 @@
             "descended": "dropped",
             "bottom": "Bottom",
             "off_route": "off route",
+            "to_finish": "To finish",
             "climbed": "climbed",
             "to_go": "to go"
         }

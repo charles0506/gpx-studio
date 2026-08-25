@@ -18,7 +18,7 @@
     } from '$lib/live-position';
     import { cumulativeHikingTime, secondsAt } from '$lib/hiking-time';
     import { map } from '$lib/components/map/map';
-    import { TrendingDown, TrendingUp } from '@lucide/svelte';
+    import { Flag, TrendingDown, TrendingUp } from '@lucide/svelte';
 
     // Reading the climb should not mean keeping a toolbar panel open on a phone
     // in the rain, so it rides on the map. A fix places you on the route while
@@ -34,12 +34,30 @@
     // Past the last climb or descent nothing is found here and nothing ahead,
     // and the screen closes rather than holding the one just walked on the map.
     let here = $derived(
-        progress?.km ?? ($showClimbPro ? ($climbCursorKm ?? climbs[0]?.startKm) : undefined)
+        progress?.km ?? ($showClimbPro ? ($climbCursorKm ?? climbs[0]?.startKm ?? 0) : undefined)
     );
     let visible = $derived(progress !== undefined || $showClimbPro);
     let tracking = $derived(progress !== undefined);
     let current = $derived(here === undefined ? undefined : climbAt(climbs, here));
     let upcoming = $derived(here !== undefined && !current ? nextClimb(climbs, here) : undefined);
+
+    // What is left when the hills are done. Read off the walking curve rather
+    // than the statistics' own total, so the distance and the time can never
+    // disagree about where the route ends.
+    let toFinish = $derived.by(() => {
+        if (here === undefined) {
+            return undefined;
+        }
+        const finish = walkingCurve.at(-1);
+        if (!finish) {
+            return undefined;
+        }
+        const done = secondsAt(walkingCurve, here);
+        return {
+            km: Math.max(0, finish.km - here),
+            seconds: done === undefined ? undefined : Math.max(0, finish.seconds - done),
+        };
+    });
 
     // A fix is projected onto the nearest point of the route however far away
     // it is, so without this the panel counts down a climb you are not on.
@@ -458,6 +476,22 @@
             </span>
             <span>{ahead ? '↘' : '↗'} {upcoming.gain} m</span>
             <span>{upcoming.gradient}%</span>
+        </div>
+    </div>
+{:else if visible && toFinish}
+    <div
+        class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
+    >
+        <div
+            bind:clientHeight={cardHeight}
+            class="bg-background/95 rounded-md shadow-md px-2.5 py-1.5 text-sm flex flex-row items-center gap-2 whitespace-nowrap"
+        >
+            <Flag size="16" />
+            <span>
+                {i18n._('toolbar.climbs.to_finish')}
+                {toFinish.km.toFixed(2)} km
+            </span>
+            <span>{minutes(toFinish.seconds)}</span>
         </div>
     </div>
 {/if}

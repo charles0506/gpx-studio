@@ -31,24 +31,13 @@
     let progress = $derived(progressAlongRoute($livePosition));
     let walkingCurve = $derived(cumulativeHikingTime($gpxStatistics));
 
-    let pointedAt = $derived(
+    // Past the last climb or descent nothing is found here and nothing ahead,
+    // and the screen closes rather than holding the one just walked on the map.
+    let here = $derived(
         progress?.km ?? ($showClimbPro ? ($climbCursorKm ?? climbs[0]?.startKm) : undefined)
     );
     let visible = $derived(progress !== undefined || $showClimbPro);
     let tracking = $derived(progress !== undefined);
-
-    // Pointing past the last climb of the route leaves nothing to show, which
-    // is right on the trail — there is nothing ahead — and unhelpful at the
-    // table, where the question was what the last one is like.
-    let here = $derived.by(() => {
-        if (pointedAt === undefined || tracking) {
-            return pointedAt;
-        }
-        if (climbAt(climbs, pointedAt) || nextClimb(climbs, pointedAt)) {
-            return pointedAt;
-        }
-        return climbs.at(-1)?.startKm ?? pointedAt;
-    });
     let current = $derived(here === undefined ? undefined : climbAt(climbs, here));
     let upcoming = $derived(here !== undefined && !current ? nextClimb(climbs, here) : undefined);
 

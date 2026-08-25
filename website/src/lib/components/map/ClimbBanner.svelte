@@ -31,13 +31,33 @@
     let progress = $derived(progressAlongRoute($livePosition));
     let walkingCurve = $derived(cumulativeHikingTime($gpxStatistics));
 
-    let here = $derived(
+    let pointedAt = $derived(
         progress?.km ?? ($showClimbPro ? ($climbCursorKm ?? climbs[0]?.startKm) : undefined)
     );
-    let current = $derived(here === undefined ? undefined : climbAt(climbs, here));
-    let upcoming = $derived(here !== undefined && !current ? nextClimb(climbs, here) : undefined);
     let visible = $derived(progress !== undefined || $showClimbPro);
     let tracking = $derived(progress !== undefined);
+
+    // Pointing past the last climb of the route leaves nothing to show, which
+    // is right on the trail — there is nothing ahead — and unhelpful at the
+    // table, where the question was what the last one is like.
+    let here = $derived.by(() => {
+        if (pointedAt === undefined || tracking) {
+            return pointedAt;
+        }
+        if (climbAt(climbs, pointedAt) || nextClimb(climbs, pointedAt)) {
+            return pointedAt;
+        }
+        return climbs.at(-1)?.startKm ?? pointedAt;
+    });
+    let current = $derived(here === undefined ? undefined : climbAt(climbs, here));
+    let upcoming = $derived(here !== undefined && !current ? nextClimb(climbs, here) : undefined);
+
+    // A fix is projected onto the nearest point of the route however far away
+    // it is, so without this the panel counts down a climb you are not on.
+    const OFF_ROUTE_M = 60;
+    let strayed = $derived(
+        progress && progress.offRouteMeters > OFF_ROUTE_M ? progress.offRouteMeters : undefined
+    );
 
     let gained = $derived(current && here !== undefined ? climbGainSoFar(current, here) : 0);
 
@@ -288,6 +308,12 @@
                     {position}/{ofKind.length}
                 </span>
                 <span class="grow"></span>
+                {#if strayed !== undefined}
+                    <span class="text-amber-600 dark:text-amber-500 whitespace-nowrap">
+                        ⚠ {i18n._('toolbar.climbs.off_route')}
+                        {strayed} m
+                    </span>
+                {/if}
                 {#if elapsed !== undefined}
                     <span class="tabular-nums">{clock(elapsed)}</span>
                 {/if}

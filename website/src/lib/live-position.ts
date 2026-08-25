@@ -37,6 +37,8 @@ export function recordProgress(gain: number, at: Date = new Date()): void {
 
 export function clearProgressHistory(): void {
     history.length = 0;
+    lastMatchKm = undefined;
+    cached = undefined;
 }
 
 /**
@@ -80,6 +82,28 @@ function distanceMeters(aLat: number, aLon: number, bLat: number, bLon: number):
     return Math.sqrt(dLat * dLat + dLon * dLon);
 }
 
+// Where the last fix landed on the route, so an out-and-back is read as the
+// walk it is. Cleared when tracking stops.
+let lastMatchKm: number | undefined = undefined;
+
+// Walking the whole route costs a couple of milliseconds on a long track, and
+// four different things ask for this on every fix. The answer only changes
+// when the position or the route does.
+let cached:
+    | { statistics: unknown; lat: number; lon: number; result: RouteProgress | undefined }
+    | undefined = undefined;
+
+// Out and back, the two legs lie on top of each other: every point of the
+// route has a twin the same distance away, and which of them is nearest is a
+// coin toss the projection loses about half the time. Among the points as
+// near as the nearest, one just ahead of the last fix is preferred — the
+// route is walked forwards, and at the turnaround the twin ahead is the leg
+// now being walked. Nothing ahead means standing still is fine, and going
+// genuinely backwards falls through to the plain nearest point.
+const CONTINUITY_SLACK_M = 25;
+const FORWARD_KM = 0.3;
+const BACKWARD_KM = 0.02;
+
 /**
  * Project a position onto the selected route: which point of it you are nearest,
  * how far off it you are, and what is left to walk.
@@ -92,6 +116,15 @@ export function progressAlongRoute(position: LivePosition | undefined): RoutePro
     const statistics = get(gpxStatistics);
     if (!statistics?.forEachTrackPoint) {
         return undefined;
+    }
+
+    if (
+        cached &&
+        cached.statistics === statistics &&
+        cached.lat === position.lat &&
+        cached.lon === position.lon
+    ) {
+        return cached.result;
     }
 
     let nearestKm: number | undefined = undefined;
@@ -114,6 +147,40 @@ export function progressAlongRoute(position: LivePosition | undefined): RoutePro
         return undefined;
     }
 
+    // A second look, now that there is something to compare against: of the
+    // points as near as the nearest, the nearest one that lies just ahead of
+    // where the last fix landed.
+    if (lastMatchKm !== undefined) {
+        const nearest = nearestMeters;
+        const previous = lastMatchKm;
+        let aheadKm: number | undefined = undefined;
+        statistics.forEachTrackPoint((point, distance) => {
+            if (distance < previous - BACKWARD_KM || distance > previous + FORWARD_KM) {
+                return;
+            }
+            const coordinates = point.getCoordinates();
+            const away = distanceMeters(
+                position.lat,
+                position.lon,
+                coordinates.lat,
+                coordinates.lon
+            );
+            if (away > nearest + CONTINUITY_SLACK_M) {
+                return;
+            }
+            if (
+                aheadKm === undefined ||
+                Math.abs(distance - previous) < Math.abs(aheadKm - previous)
+            ) {
+                aheadKm = distance;
+            }
+        });
+        if (aheadKm !== undefined) {
+            nearestKm = aheadKm;
+        }
+    }
+    lastMatchKm = nearestKm;
+
     // Elevation gain is only available cumulatively through getTrackPoint, so
     // walk it once more rather than carrying every point in memory.
     const curve = cumulativeHikingTime(statistics);
@@ -129,7 +196,7 @@ export function progressAlongRoute(position: LivePosition | undefined): RoutePro
     nearestGain = statistics.getTrackPoint(index)?.elevation.gain ?? 0;
     totalGain = statistics.global.elevation.gain;
 
-    return {
+    const result: RouteProgress = {
         km: nearestKm,
         offRouteMeters: Math.round(nearestMeters),
         gain: Math.round(nearestGain),
@@ -140,4 +207,6 @@ export function progressAlongRoute(position: LivePosition | undefined): RoutePro
                 ? Math.max(0, totalSeconds - doneSeconds)
                 : undefined,
     };
+    cached = { statistics, lat: position.lat, lon: position.lon, result };
+    return result;
 }

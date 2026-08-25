@@ -310,6 +310,7 @@
             "remaining_descent": "Drop left",
             "descended": "dropped",
             "bottom": "Bottom",
+            "off_route": "off route",
             "climbed": "climbed",
             "to_go": "to go"
         }

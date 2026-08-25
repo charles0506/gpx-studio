@@ -9,7 +9,7 @@
         nextClimb,
         type Climb,
     } from '$lib/climbs';
-    import { climbCursorKm, showClimbPro } from '$lib/climb-view';
+    import { climbCursorKm, climbScreen } from '$lib/climb-view';
     import {
         livePosition,
         progressAlongRoute,
@@ -31,13 +31,19 @@
     let progress = $derived(progressAlongRoute($livePosition));
     let walkingCurve = $derived(cumulativeHikingTime($gpxStatistics));
 
+    let tracking = $derived(progress !== undefined);
+    // 'auto' is the walking setting: the panel belongs on the map while a fix
+    // is placing you on the route, and nowhere near it otherwise. 'on' holds it
+    // open to read a hill at the table, and 'off' means off even while
+    // following, which is the one the map owed you.
+    let visible = $derived($climbScreen === 'on' || ($climbScreen === 'auto' && tracking));
+
     // Past the last climb or descent nothing is found here and nothing ahead,
     // and the screen closes rather than holding the one just walked on the map.
     let here = $derived(
-        progress?.km ?? ($showClimbPro ? ($climbCursorKm ?? climbs[0]?.startKm ?? 0) : undefined)
+        progress?.km ??
+            ($climbScreen === 'on' ? ($climbCursorKm ?? climbs[0]?.startKm ?? 0) : undefined)
     );
-    let visible = $derived(progress !== undefined || $showClimbPro);
-    let tracking = $derived(progress !== undefined);
     let current = $derived(here === undefined ? undefined : climbAt(climbs, here));
     let upcoming = $derived(here !== undefined && !current ? nextClimb(climbs, here) : undefined);
 

@@ -312,6 +312,9 @@
             "bottom": "Bottom",
             "off_route": "off route",
             "to_finish": "To finish",
+            "screen_off": "off",
+            "screen_auto": "while following",
+            "screen_on": "always on",
             "climbed": "climbed",
             "to_go": "to go"
         }

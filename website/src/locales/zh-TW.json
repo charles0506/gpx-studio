@@ -312,6 +312,9 @@
             "bottom": "谷底",
             "off_route": "偏離路線",
             "to_finish": "到終點",
+            "screen_off": "關",
+            "screen_auto": "定位時顯示",
+            "screen_on": "一直顯示",
             "climbed": "已爬",
             "to_go": "還要爬"
         }

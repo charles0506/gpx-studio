@@ -116,11 +116,13 @@
     // The climb drawn on its own, the way a watch shows it: this hill, not the
     // whole day, and shaded by how steep each part of it is rather than by one
     // average that hides the wall at the top.
-    // The map keeps a toolbar 80 px wide down the left and a stack of controls
-    // down the right. Centring on the map itself puts the panel under the left
-    // toolbar on a phone, so it centres in the gap between them instead, and
-    // never grows wider than that gap.
-    const SIDE_CONTROLS = 80 + 44 + 24;
+    // The map keeps a toolbar down the left and a stack of controls down the
+    // right. Centring on the map itself puts the panel under the left toolbar on
+    // a phone, so it centres in the gap between them instead, and never grows
+    // wider than that gap. The toolbar is 32 px of buttons; the 80 px box around
+    // it is a transparent centring wrapper, and measuring that instead left a
+    // finger's width of map showing down the left of the panel for nothing.
+    const SIDE_CONTROLS = 40 + 44 + 24;
     let width = $derived(
         Math.max(160, Math.min(expanded ? 520 : 240, (viewportWidth || 360) - SIDE_CONTROLS))
     );
@@ -227,7 +229,7 @@
 {#if visible && current && remaining}
     {@const colour = gradientColour(current.gradient)}
     <div
-        class="absolute top-0 left-20 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
+        class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
     >
         <div
             class="{expanded
@@ -365,7 +367,7 @@
     </div>
 {:else if visible && upcoming && here !== undefined}
     <div
-        class="absolute top-0 left-20 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
+        class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
     >
         <div
             class="bg-background/95 rounded-md shadow-md px-2.5 py-1.5 text-sm flex flex-row items-center gap-2 whitespace-nowrap"

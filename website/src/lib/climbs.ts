@@ -42,13 +42,19 @@ type Sample = { km: number; elevation: number };
 const MINIMUM_GAIN = 60;
 const MAXIMUM_DIP = 25;
 /**
- * Ground rising slower than this is approach, not climb. It is charged against
- * the ascent as the route is walked, so a kilometre of it costs 30 m: a long
- * gentle valley road cannot carry a steep finish into the same climb, and the
- * average gradient a climb reports is never watered down by the flat that led
- * to it.
+ * Ground going the right way slower than this is approach, not climb. It is
+ * charged against the gain as the route is walked, so a kilometre of 3% costs
+ * 30 m: a long gentle valley road cannot carry a steep finish into the same
+ * climb, and the average gradient a climb reports is never watered down by the
+ * flat that led to it.
+ *
+ * Descents are held to a far steeper bar. Anything you can walk down without
+ * thinking about it needs no screen; what wants watching is the drop that has
+ * to be taken a step at a time, and since a segment's average always beats its
+ * approach gradient, asking for 10% here is what makes a descent steep by
+ * definition rather than by a second rule applied afterwards.
  */
-const APPROACH_GRADIENT = 3;
+const APPROACH_GRADIENT: Record<SegmentKind, number> = { climb: 3, descent: 10 };
 
 function categorise(score: number): 1 | 2 | 3 | 4 {
     if (score >= 40000) return 1;
@@ -149,7 +155,7 @@ function findSegments(samples: Sample[], kind: SegmentKind): Climb[] {
         const previous = samples[i - 1];
         const sample = samples[i];
         const metres = Math.max((sample.km - previous.km) * 1000, 0);
-        running += up(sample) - up(previous) - (metres * APPROACH_GRADIENT) / 100;
+        running += up(sample) - up(previous) - (metres * APPROACH_GRADIENT[kind]) / 100;
 
         if (up(sample) > up(peak)) {
             peak = sample;

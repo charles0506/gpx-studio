@@ -298,7 +298,7 @@
             "length": "Length",
             "gradient": "Gradient",
             "time": "Time",
-            "attribution": "A climb or descent is counted from 60 m; ground going the right way slower than 3% is approach rather than climb; reversals under 25 m do not split one in two. The upper scale is for climbs, the lower for descents.",
+            "attribution": "A climb or descent is counted from 60 m; ground going the right way slower than 3% uphill, or 10% downhill, is approach rather than climb, so only a steep descent gets a screen; reversals under 25 m do not split one in two. The upper scale is for climbs, the lower for descents.",
             "climb": "Climb",
             "climb_screen": "Climb screen",
             "vertical_speed": "VAM",

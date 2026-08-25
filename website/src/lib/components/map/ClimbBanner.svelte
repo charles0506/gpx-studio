@@ -34,6 +34,7 @@
     let current = $derived(here === undefined ? undefined : climbAt(climbs, here));
     let upcoming = $derived(here !== undefined && !current ? nextClimb(climbs, here) : undefined);
     let visible = $derived(progress !== undefined || $showClimbPro);
+    let tracking = $derived(progress !== undefined);
 
     let gained = $derived(current && here !== undefined ? climbGainSoFar(current, here) : 0);
 
@@ -103,6 +104,27 @@
             instance.off('dragstart', fold);
             instance.off('zoomstart', fold);
         };
+    });
+
+    // How much map the panel is standing on, measured rather than guessed: it
+    // changes with the climb, the language and whether the climb is open.
+    let cardHeight = $state(0);
+    // Distance from the top of the map to the top of the panel, from mt-14.
+    const PANEL_TOP = 56;
+
+    // Following your own position centres the map on you, and the open panel is
+    // over that centre. Padding the top of the map moves the centre down into
+    // the space below the panel, so the dot the map is following stays in sight.
+    // Only while following, and only while open: the folded strip clears the
+    // centre by itself, and off the trail this would shift every camera move,
+    // including the one that frames a file when it is opened.
+    $effect(() => {
+        const instance = $map;
+        if (!instance || !tracking || !visible || !expanded || !cardHeight) {
+            return;
+        }
+        instance.setPadding({ top: PANEL_TOP + cardHeight + 8, bottom: 0, left: 0, right: 0 });
+        return () => instance.setPadding({ top: 0, bottom: 0, left: 0, right: 0 });
     });
 
     let viewportWidth = $state(0);
@@ -232,6 +254,7 @@
         class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
     >
         <div
+            bind:clientHeight={cardHeight}
             class="{expanded
                 ? 'bg-background/85'
                 : 'bg-background/95'} rounded-md shadow-md px-3 py-1.5 flex flex-col gap-1"
@@ -370,6 +393,7 @@
         class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
     >
         <div
+            bind:clientHeight={cardHeight}
             class="bg-background/95 rounded-md shadow-md px-2.5 py-1.5 text-sm flex flex-row items-center gap-2 whitespace-nowrap"
         >
             <TrendingUp size="16" style="color: {gradientColour(upcoming.gradient)}" />

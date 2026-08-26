@@ -428,7 +428,16 @@ export class ElevationProfile {
         };
 
         let dragStarted = false;
+        // A finger reads the profile by sliding along it, so on a touch screen
+        // that gesture moves the cursor rather than selecting a range: sliding
+        // is the only way to scrub, and a range can still be taken with the
+        // scissors tool. Nothing hovers on a touch screen, so a pointermove
+        // from one is a finger already down and needs no flag to remember it.
         const onMouseDown = (evt: PointerEvent) => {
+            if (evt.pointerType === 'touch') {
+                moveCursorTo(getIndex(evt));
+                return;
+            }
             if (evt.shiftKey) {
                 // Panning interaction
                 return;
@@ -438,6 +447,10 @@ export class ElevationProfile {
             startIndex = getIndex(evt);
         };
         const onMouseMove = (evt: PointerEvent) => {
+            if (evt.pointerType === 'touch') {
+                moveCursorTo(getIndex(evt));
+                return;
+            }
             if (dragStarted) {
                 this._dragging = true;
                 endIndex = getIndex(evt);
@@ -458,6 +471,10 @@ export class ElevationProfile {
             }
         };
         const onMouseUp = (evt: PointerEvent) => {
+            if (evt.pointerType === 'touch') {
+                moveCursorTo(getIndex(evt));
+                return;
+            }
             dragStarted = false;
             this._dragging = false;
             this._canvas.style.cursor = '';
@@ -479,6 +496,9 @@ export class ElevationProfile {
                 }
             }
         };
+        // Otherwise the browser takes the slide as a scroll and the cursor
+        // stops halfway. Nothing here uses touch for panning or zooming.
+        this._canvas.style.touchAction = 'none';
         this._canvas.addEventListener('pointerdown', onMouseDown);
         this._canvas.addEventListener('pointermove', onMouseMove);
         this._canvas.addEventListener('pointerup', onMouseUp);
@@ -489,6 +509,25 @@ export class ElevationProfile {
         // at a time, ten at a time with shift held.
         this._canvas.addEventListener('pointerenter', () => (this._pointerOver = true));
         this._canvas.addEventListener('pointerleave', () => (this._pointerOver = false));
+
+        const moveCursorTo = (index: number | undefined) => {
+            const data = this._chart?.data.datasets[0]?.data as any[] | undefined;
+            if (!data || index === undefined || index < 0 || index >= data.length) {
+                return;
+            }
+            this._cursorIndex = index;
+            const point = data[index];
+            if (typeof point?.km === 'number') {
+                climbCursorKm.set(point.km);
+            }
+            if (point?.coordinates) {
+                this._hoveredPoint.set(point.coordinates);
+            }
+            // Move the chart's own readout with it, so the tooltip and the
+            // marker on the map are never describing different places.
+            this._chart?.tooltip?.setActiveElements([{ datasetIndex: 0, index }], { x: 0, y: 0 });
+            this._chart?.update('none');
+        };
 
         this._onKeyDown = (event: KeyboardEvent) => {
             if (!this._pointerOver || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) {
@@ -502,20 +541,7 @@ export class ElevationProfile {
             event.preventDefault();
 
             const step = (event.shiftKey ? 10 : 1) * (event.key === 'ArrowRight' ? 1 : -1);
-            const index = Math.min(Math.max(this._cursorIndex + step, 0), data.length - 1);
-            this._cursorIndex = index;
-
-            const point = data[index];
-            if (typeof point?.km === 'number') {
-                climbCursorKm.set(point.km);
-            }
-            if (point?.coordinates) {
-                this._hoveredPoint.set(point.coordinates);
-            }
-            // Move the chart's own readout with it, so the tooltip and the
-            // marker on the map are never describing different places.
-            this._chart?.tooltip?.setActiveElements([{ datasetIndex: 0, index }], { x: 0, y: 0 });
-            this._chart?.update('none');
+            moveCursorTo(Math.min(Math.max(this._cursorIndex + step, 0), data.length - 1));
         };
         window.addEventListener('keydown', this._onKeyDown);
     }

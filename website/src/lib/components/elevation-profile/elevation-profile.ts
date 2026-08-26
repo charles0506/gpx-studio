@@ -81,6 +81,11 @@ interface ElevationProfilePoint {
 
 export class ElevationProfile {
     private _chart: Chart | null = null;
+    // Where the arrow keys will step from, and whether they should: the keys
+    // belong to the chart only while the pointer is over it.
+    private _cursorIndex = 0;
+    private _pointerOver = false;
+    private _onKeyDown: ((event: KeyboardEvent) => void) | null = null;
     private _canvas: HTMLCanvasElement;
     private _overlay: HTMLCanvasElement;
     private _dragging = false;
@@ -244,6 +249,7 @@ export class ElevationProfile {
                             this._hoveredPoint.set(this._dragging ? null : point.coordinates);
                             // And stands in for a GPS fix on the climb screen.
                             climbCursorKm.set(point.km);
+                            this._cursorIndex = point.index;
                             let slope = {
                                 at: point.slope.at.toFixed(1),
                                 segment: point.slope.segment.toFixed(1),
@@ -469,12 +475,49 @@ export class ElevationProfile {
                     (endIndex === undefined ? undefined : data?.[endIndex]);
                 if (typeof point?.km === 'number') {
                     climbCursorKm.set(point.km);
+                    this._cursorIndex = point.index ?? this._cursorIndex;
                 }
             }
         };
         this._canvas.addEventListener('pointerdown', onMouseDown);
         this._canvas.addEventListener('pointermove', onMouseMove);
         this._canvas.addEventListener('pointerup', onMouseUp);
+
+        // Reading a profile with a mouse is a matter of a few metres either
+        // way, and a hand on a trackpad cannot hold that still. With the
+        // pointer over the chart the arrow keys walk the route a track point
+        // at a time, ten at a time with shift held.
+        this._canvas.addEventListener('pointerenter', () => (this._pointerOver = true));
+        this._canvas.addEventListener('pointerleave', () => (this._pointerOver = false));
+
+        this._onKeyDown = (event: KeyboardEvent) => {
+            if (!this._pointerOver || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) {
+                return;
+            }
+            const data = this._chart?.data.datasets[0]?.data as any[] | undefined;
+            if (!data || data.length === 0) {
+                return;
+            }
+            // The page would otherwise scroll sideways under the chart.
+            event.preventDefault();
+
+            const step = (event.shiftKey ? 10 : 1) * (event.key === 'ArrowRight' ? 1 : -1);
+            const index = Math.min(Math.max(this._cursorIndex + step, 0), data.length - 1);
+            this._cursorIndex = index;
+
+            const point = data[index];
+            if (typeof point?.km === 'number') {
+                climbCursorKm.set(point.km);
+            }
+            if (point?.coordinates) {
+                this._hoveredPoint.set(point.coordinates);
+            }
+            // Move the chart's own readout with it, so the tooltip and the
+            // marker on the map are never describing different places.
+            this._chart?.tooltip?.setActiveElements([{ datasetIndex: 0, index }], { x: 0, y: 0 });
+            this._chart?.update('none');
+        };
+        window.addEventListener('keydown', this._onKeyDown);
     }
 
     updateData() {
@@ -832,6 +875,10 @@ export class ElevationProfile {
     }
 
     destroy() {
+        if (this._onKeyDown) {
+            window.removeEventListener('keydown', this._onKeyDown);
+            this._onKeyDown = null;
+        }
         if (this._chart) {
             this._chart.destroy();
             this._chart = null;

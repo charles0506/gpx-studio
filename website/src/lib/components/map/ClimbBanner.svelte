@@ -316,7 +316,7 @@
 {/snippet}
 
 {#if visible && current && remaining}
-    {@const colour = gradientColour(current.gradient, current.kind)}
+    {@const colour = gradientColour(shape?.markerGradient ?? current.gradient, current.kind)}
     {@const falling = current.kind === 'descent'}
     <div
         class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
@@ -501,7 +501,6 @@
                 {(upcoming.startKm - here).toFixed(2)} km {i18n._('toolbar.climbs.ahead')}
             </span>
             <span>{ahead ? '↘' : '↗'} {upcoming.gain} m</span>
-            <span>{upcoming.gradient}%</span>
         </div>
     </div>
 {:else if visible && toFinish}

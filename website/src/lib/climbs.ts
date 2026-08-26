@@ -35,7 +35,7 @@ export type Climb = {
     profile: Sample[];
 };
 
-type Sample = { km: number; elevation: number };
+export type Sample = { km: number; elevation: number };
 
 // A climb has to gain this much to be worth naming, and may dip this much
 // without being counted as two.
@@ -181,6 +181,42 @@ function findSegments(samples: Sample[], kind: SegmentKind): Climb[] {
     close(start, top);
 
     return segments;
+}
+
+/** The route as distance-and-elevation pairs, for reading the ground itself. */
+export function routeSamples(statistics: GPXStatisticsGroup | undefined): Sample[] {
+    return samplesOf(statistics);
+}
+
+// Gradients read off neighbouring track points are noise — a GPS wobble across
+// a couple of metres reads as hundreds of percent — so the ground is measured
+// over the hundred metres around you, which is what the legs feel anyway.
+const HALF_WINDOW_KM = 0.05;
+
+/**
+ * How steep the ground is at a distance along the route, as a percentage,
+ * signed: positive uphill, negative down.
+ */
+export function gradientAtKm(samples: Sample[], km: number): number | undefined {
+    if (samples.length < 2) {
+        return undefined;
+    }
+    let from = samples[0];
+    let to = samples[samples.length - 1];
+    for (const sample of samples) {
+        if (sample.km <= km - HALF_WINDOW_KM) {
+            from = sample;
+        }
+        if (sample.km >= km + HALF_WINDOW_KM) {
+            to = sample;
+            break;
+        }
+    }
+    const run = (to.km - from.km) * 1000;
+    if (run <= 0) {
+        return undefined;
+    }
+    return Math.round(((to.elevation - from.elevation) / run) * 1000) / 10;
 }
 
 export function findClimbs(statistics: GPXStatisticsGroup | undefined): Climb[] {

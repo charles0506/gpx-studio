@@ -5,8 +5,10 @@
         climbAt,
         climbGainSoFar,
         findClimbsAndDescents,
+        gradientAtKm,
         gradientColour,
         nextClimb,
+        routeSamples,
         type Climb,
     } from '$lib/climbs';
     import { climbCursorKm, climbScreen } from '$lib/climb-view';
@@ -64,6 +66,12 @@
             seconds: done === undefined ? undefined : Math.max(0, finish.seconds - done),
         };
     });
+
+    // The ground underfoot, which the short strips have no climb to describe:
+    // between two climbs, or on the walk out, the gradient here is the only
+    // thing left that says anything about the walking.
+    let samples = $derived(routeSamples($gpxStatistics));
+    let underfoot = $derived(here === undefined ? undefined : gradientAtKm(samples, here));
 
     // A fix is projected onto the nearest point of the route however far away
     // it is, so without this the panel counts down a climb you are not on.
@@ -298,6 +306,15 @@
     }
 </script>
 
+{#snippet ground(gradient: number)}
+    <span
+        class="rounded px-1 text-white text-xs"
+        style="background-color: {gradientColour(gradient, gradient < 0 ? 'descent' : 'climb')}"
+    >
+        {Math.abs(gradient) < 1 ? '' : gradient > 0 ? '↗' : '↘'}{Math.abs(gradient)}%
+    </span>
+{/snippet}
+
 {#if visible && current && remaining}
     {@const colour = gradientColour(current.gradient, current.kind)}
     {@const falling = current.kind === 'descent'}
@@ -465,6 +482,9 @@
             bind:clientHeight={cardHeight}
             class="bg-background/95 rounded-md shadow-md px-2.5 py-1.5 text-sm flex flex-row items-center gap-2 whitespace-nowrap"
         >
+            {#if underfoot !== undefined}
+                {@render ground(underfoot)}
+            {/if}
             {#if ahead}
                 <TrendingDown
                     size="16"
@@ -492,6 +512,9 @@
             bind:clientHeight={cardHeight}
             class="bg-background/95 rounded-md shadow-md px-2.5 py-1.5 text-sm flex flex-row items-center gap-2 whitespace-nowrap"
         >
+            {#if underfoot !== undefined}
+                {@render ground(underfoot)}
+            {/if}
             <Flag size="16" />
             <span>
                 {i18n._('toolbar.climbs.to_finish')}

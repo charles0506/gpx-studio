@@ -537,13 +537,17 @@ export class ElevationProfile {
             if (!data || data.length === 0) {
                 return;
             }
-            // The page would otherwise scroll sideways under the chart.
+            // The window already has a keydown listener that walks the file
+            // selection with the arrow keys, and it was registered first, so
+            // preventDefault alone would not save the keys from it: this one
+            // listens on the way down and stops the event there.
             event.preventDefault();
+            event.stopImmediatePropagation();
 
             const step = (event.shiftKey ? 10 : 1) * (event.key === 'ArrowRight' ? 1 : -1);
             moveCursorTo(Math.min(Math.max(this._cursorIndex + step, 0), data.length - 1));
         };
-        window.addEventListener('keydown', this._onKeyDown);
+        window.addEventListener('keydown', this._onKeyDown, true);
     }
 
     updateData() {
@@ -902,7 +906,7 @@ export class ElevationProfile {
 
     destroy() {
         if (this._onKeyDown) {
-            window.removeEventListener('keydown', this._onKeyDown);
+            window.removeEventListener('keydown', this._onKeyDown, true);
             this._onKeyDown = null;
         }
         if (this._chart) {

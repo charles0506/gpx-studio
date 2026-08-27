@@ -30,6 +30,8 @@
     import { getURLForGoogleDriveFile } from '$lib/components/embedding/embedding';
     import { db } from '$lib/db';
     import { fileStateCollection } from '$lib/logic/file-state';
+    import { acceptSettings, openShare } from '$lib/share';
+    import { toast } from 'svelte-sonner';
 
     const {
         treeFileView,
@@ -72,6 +74,36 @@
                 Promise.all(downloads).then((files) => {
                     loadFiles(files.filter((file) => file !== null));
                 });
+            }
+
+            // A shared link: the routes come in beside whatever is already
+            // open, and the settings wait for a yes rather than rewriting the
+            // basemap and the units of somebody who only wanted the walk.
+            const share = page.url.searchParams.get('share');
+            if (share) {
+                openShare(share)
+                    .then(({ routes, settings: shared }) => {
+                        // Drop the parameter so a reload does not add the same
+                        // routes a second time.
+                        const url = new URL(window.location.href);
+                        url.searchParams.delete('share');
+                        window.history.replaceState({}, '', url);
+
+                        const count = Object.keys(shared).length;
+                        toast.success(`${routes} ${i18n._('share.opened')}`, {
+                            duration: count > 0 ? 15000 : 5000,
+                            action:
+                                count > 0
+                                    ? {
+                                          label: i18n._('share.apply_settings'),
+                                          onClick: () => acceptSettings(shared),
+                                      }
+                                    : undefined,
+                        });
+                    })
+                    .catch((e) =>
+                        toast.error(`${i18n._('share.failed')}${String(e?.message ?? e)}`)
+                    );
             }
         });
     });

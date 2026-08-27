@@ -11,6 +11,7 @@
     import Elevation from '$lib/components/toolbar/tools/Elevation.svelte';
     import Extract from '$lib/components/toolbar/tools/Extract.svelte';
     import Clean from '$lib/components/toolbar/tools/Clean.svelte';
+    import Share from '$lib/components/toolbar/tools/Share.svelte';
     import Reduce from '$lib/components/toolbar/tools/reduce/Reduce.svelte';
     import RoutingControlPopup from '$lib/components/toolbar/tools/routing/RoutingControlPopup.svelte';
     import { Popup } from 'maplibre-gl';
@@ -46,7 +47,9 @@
         <div class="rounded-md shadow-md pointer-events-auto">
             <Card.Root class="rounded-md border-none py-2.5">
                 <Card.Content class="px-2.5">
-                    {#if $currentTool === Tool.ROUTING}
+                    {#if $currentTool === Tool.SHARE}
+                        <Share />
+                    {:else if $currentTool === Tool.ROUTING}
                         <Routing {popup} {popupElement} bind:minimized={$minimizeRoutingMenu} />
                     {:else if $currentTool === Tool.SCISSORS}
                         <Scissors />

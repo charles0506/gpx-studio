@@ -12,9 +12,10 @@
         Funnel,
         Scissors,
         MountainSnow,
-    CloudRain,
-    TrendingUp,
-} from '@lucide/svelte';
+        CloudRain,
+        TrendingUp,
+        Share2,
+    } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
 
     let props: {
@@ -27,6 +28,9 @@
         class="h-fit flex flex-col p-1 gap-1.5 bg-background rounded-r-md pointer-events-auto shadow-md {props.class ??
             ''}"
     >
+        <ToolbarItem itemTool={Tool.SHARE} label={i18n._('toolbar.share.tooltip')}>
+            <Share2 size="18" class="size-4.5" />
+        </ToolbarItem>
         <ToolbarItem itemTool={Tool.ROUTING} label={i18n._('toolbar.routing.tooltip')}>
             <Pencil size="18" class="size-4.5" />
         </ToolbarItem>

@@ -294,6 +294,13 @@
             "next_24h": "Rain in the 12 hours after departure",
             "total_rain": "While walking:"
         },
+        "share": {
+            "tooltip": "Share",
+            "help": "Put the selected routes behind a link. Anyone with the link can open them — no passphrase needed to read.",
+            "create": "Create a link",
+            "copied": "Copied",
+            "note": "The link holds a copy. Deleting it here stops new people opening it; it does not take the routes back off anyone who already has them. Links expire after 90 days."
+        },
         "climbs": {
             "tooltip": "Climbs",
             "help": "No climb on this route gains enough to be worth calling out. Select a track with some ascent.",
@@ -641,6 +648,11 @@
         "removed": "Removed",
         "empty": "Nothing in the library yet.",
         "note": "Opening a route adds it to what is already open. Saving a route with the same name replaces it."
+    },
+    "share": {
+        "opened": "routes came in from the link",
+        "apply_settings": "Use their settings too",
+        "failed": "Could not open the link: "
     },
     "sync": {
         "title": "Sync",

@@ -1,6 +1,7 @@
 import { writable, type Writable } from 'svelte/store';
 
 export enum Tool {
+    SHARE,
     ROUTING,
     WAYPOINT,
     SCISSORS,

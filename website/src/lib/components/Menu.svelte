@@ -1,5 +1,6 @@
 <script lang="ts">
     import SyncDialog from '$lib/components/SyncDialog.svelte';
+    import OfflineDialog from '$lib/components/OfflineDialog.svelte';
     import * as Menubar from '$lib/components/ui/menubar/index.js';
     import { Button } from '$lib/components/ui/button';
     import Logo from '$lib/components/Logo.svelte';
@@ -130,6 +131,7 @@
     });
 
     let syncOpen = $state(false);
+    let offlineOpen = $state(false);
 </script>
 
 <div class="absolute md:top-2 left-0 right-0 z-20 flex flex-row justify-center pointer-events-none">
@@ -407,6 +409,10 @@
                     <Menubar.CheckboxItem bind:checked={$showSelectedOnly}>
                         <Route size="16" />{i18n._('menu.show_selected_only')}
                     </Menubar.CheckboxItem>
+                    <Menubar.Separator />
+                    <Menubar.Item inset onclick={() => (offlineOpen = true)}>
+                        {i18n._('offline.title')}
+                    </Menubar.Item>
                     <Menubar.Separator />
                     <Menubar.Item inset onclick={() => map.toggle3D()}>
                         <Box size="16" />
@@ -703,6 +709,7 @@
 />
 
 <SyncDialog bind:open={syncOpen} />
+<OfflineDialog bind:open={offlineOpen} />
 
 <style lang="postcss">
     @reference "../../app.css";

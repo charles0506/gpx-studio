@@ -8,7 +8,6 @@
     import { ListFileItem, ListLevel, ListWaypointsItem, type ListItem } from './file-list';
     import type { GPXFileWithStatistics } from '$lib/logic/statistics-tree';
     import { allowedMoves, dragging, SortableFileList } from './sortable-file-list';
-    import { closedFiles } from '$lib/logic/closed-files';
 
     let {
         node,
@@ -73,12 +72,9 @@
 >
     {#if node instanceof Map}
         {#each node as [fileId, file] (fileId)}
-            <!-- Closed from the strip, still in the tree. -->
-            {#if orientation === 'vertical' || !$closedFiles.has(fileId)}
-                <div data-id={fileId}>
-                    <FileListNodeStore {file} />
-                </div>
-            {/if}
+            <div data-id={fileId}>
+                <FileListNodeStore {file} />
+            </div>
         {/each}
     {:else if node instanceof GPXFile}
         {#if item instanceof ListWaypointsItem}

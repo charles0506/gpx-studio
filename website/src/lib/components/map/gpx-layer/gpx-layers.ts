@@ -4,7 +4,6 @@ import { GPXLayer } from './gpx-layer';
 import { map } from '$lib/components/map/map';
 import { selection } from '$lib/logic/selection';
 import { settings } from '$lib/logic/settings';
-import { closedFiles } from '$lib/logic/closed-files';
 
 export class GPXLayerCollection {
     private _layers: Map<string, GPXLayer>;
@@ -44,7 +43,7 @@ export class GPXLayerCollection {
 
         selection.subscribe(() => this.showOnlySelected());
         settings.showSelectedOnly.subscribe(() => this.showOnlySelected());
-        closedFiles.subscribe(() => this.showOnlySelected());
+
         map.subscribe((instance) => {
             this.showOnlySelected();
             // Switching basemap reloads the style and re-adds every layer, which
@@ -69,7 +68,7 @@ export class GPXLayerCollection {
         }
 
         const only = get(settings.showSelectedOnly);
-        const closed = get(closedFiles);
+
         const selected = new Set(
             get(selection)
                 .getSelected()
@@ -80,8 +79,7 @@ export class GPXLayerCollection {
         this._layers.forEach((_layer, fileId) => {
             // Nothing selected would otherwise leave an empty map, which reads as
             // a bug rather than as a setting.
-            const visible =
-                !closed.has(fileId) && (!only || selected.size === 0 || selected.has(fileId));
+            const visible = !only || selected.size === 0 || selected.has(fileId);
             for (const id of [fileId, `${fileId}-direction`, `${fileId}-waypoints`]) {
                 if (map_.getLayer(id)) {
                     map_.setLayoutProperty(id, 'visibility', visible ? 'visible' : 'none');

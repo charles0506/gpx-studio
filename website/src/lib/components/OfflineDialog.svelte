@@ -8,6 +8,7 @@
     import { fetchTiles, planTiles, type Progress } from '$lib/offline';
     import { gpxStatistics } from '$lib/logic/statistics';
     import { settings } from '$lib/logic/settings';
+    import { MAX_TILE_ENTRIES } from '$lib/offline-limits';
 
     const { offlineZoomRange } = settings;
 
@@ -27,10 +28,7 @@
     // that is selected and the layers that are switched on.
     let plan = $derived(open && $gpxStatistics ? planTiles(zooms) : { urls: [], megabytes: 0 });
 
-    // The service worker keeps 4000 tiles and drops the oldest beyond that, so
-    // a plan larger than the cache would evict its own beginning.
-    const CACHE_LIMIT = 4000;
-    let tooMany = $derived(plan.urls.length > CACHE_LIMIT);
+    let tooMany = $derived(plan.urls.length > MAX_TILE_ENTRIES);
 
     async function start() {
         busy = true;
@@ -76,7 +74,7 @@
 
             {#if tooMany}
                 <span class="text-xs text-destructive">
-                    {i18n._('offline.too_many').replace('{n}', String(CACHE_LIMIT))}
+                    {i18n._('offline.too_many').replace('{n}', String(MAX_TILE_ENTRIES))}
                 </span>
             {/if}
 

@@ -5,6 +5,7 @@ import { gpxStatistics } from '$lib/logic/statistics';
 import { settings } from '$lib/logic/settings';
 import { i18n } from '$lib/i18n.svelte';
 import { fetchTiles, planTiles } from '$lib/offline';
+import { MAX_TILE_ENTRIES } from '$lib/offline-limits';
 
 /**
  * Fetching the tiles for a route the moment it is picked, so that choosing the
@@ -22,7 +23,6 @@ import { fetchTiles, planTiles } from '$lib/offline';
 const SETTLE_MS = 1500;
 // Beyond what the cache holds, a fetch would evict its own beginning. The
 // dialog says so and lets you decide; unattended, it simply stands down.
-const CACHE_LIMIT = 4000;
 
 let timer: ReturnType<typeof setTimeout> | undefined = undefined;
 let controller: AbortController | undefined = undefined;
@@ -48,7 +48,7 @@ async function run() {
     }
 
     const plan = planTiles(zooms());
-    if (plan.urls.length === 0 || plan.urls.length > CACHE_LIMIT) {
+    if (plan.urls.length === 0 || plan.urls.length > MAX_TILE_ENTRIES) {
         return;
     }
 

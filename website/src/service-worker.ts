@@ -2,6 +2,7 @@
 /// <reference lib="webworker" />
 
 import { base, build, files, prerendered, version } from '$service-worker';
+import { MAX_TILE_ENTRIES } from '$lib/offline-limits';
 
 // A hiker loses signal long before they lose interest in the map, so two
 // separate caches: the app itself, replaced wholesale on every deploy, and the
@@ -9,10 +10,10 @@ import { base, build, files, prerendered, version } from '$service-worker';
 const APP_CACHE = `app-${version}`;
 const TILE_CACHE = 'map-data';
 
-// Roughly a few hundred megabytes of tiles at typical sizes. Browsers evict the
-// whole origin when they run short of room, so the cap is about keeping the
-// cache tidy rather than about respecting a hard quota.
-const MAX_TILE_ENTRIES = 4000;
+// The ceiling lives in $lib so that the dialog planning a fetch and the worker
+// trimming the cache cannot disagree about it. Browsers evict the whole origin
+// when they run short of room, so this is about keeping the cache tidy rather
+// than about respecting a hard quota.
 
 // Hosts serving map data that is worth keeping offline. Everything here is
 // immutable enough that a stale copy beats no copy at all.
@@ -44,9 +45,7 @@ sw.addEventListener('install', (event) => {
             // One bad asset should not fail the whole install, so they are added
             // one by one rather than through addAll.
             .then((cache) =>
-                Promise.all(
-                    APP_ASSETS.map((asset) => cache.add(asset).catch(() => undefined))
-                )
+                Promise.all(APP_ASSETS.map((asset) => cache.add(asset).catch(() => undefined)))
             )
             .then(() => sw.skipWaiting())
     );
@@ -84,7 +83,9 @@ async function trimTileCache() {
         return;
     }
     // Cache.keys() returns insertion order, so the front of the list is oldest.
-    await Promise.all(keys.slice(0, keys.length - MAX_TILE_ENTRIES).map((key) => cache.delete(key)));
+    await Promise.all(
+        keys.slice(0, keys.length - MAX_TILE_ENTRIES).map((key) => cache.delete(key))
+    );
 }
 
 // Map data: serve the cached copy immediately when there is one, and only reach

@@ -1,10 +1,9 @@
 import { get } from 'svelte/store';
-import { toast } from 'svelte-sonner';
+
 import { selection } from '$lib/logic/selection';
 import { gpxStatistics } from '$lib/logic/statistics';
 import { settings } from '$lib/logic/settings';
-import { i18n } from '$lib/i18n.svelte';
-import { fetchTiles, planTiles } from '$lib/offline';
+import { fetchTiles, missingTiles, planTiles } from '$lib/offline';
 import { MAX_TILE_ENTRIES } from '$lib/offline-limits';
 
 /**
@@ -26,7 +25,6 @@ const SETTLE_MS = 1500;
 
 let timer: ReturnType<typeof setTimeout> | undefined = undefined;
 let controller: AbortController | undefined = undefined;
-let lastPlanned: string | undefined = undefined;
 
 function zooms(): number[] {
     const [from, to] = get(settings.offlineZoomRange);
@@ -52,23 +50,17 @@ async function run() {
         return;
     }
 
-    // Same route, same layers, same zooms: it is already in the cache, and the
-    // service worker would serve every one of these from there anyway.
-    const signature = `${plan.urls.length}|${plan.urls[0]}|${plan.urls[plan.urls.length - 1]}`;
-    if (signature === lastPlanned) {
+    // Whatever is already stored is not fetched again — which is most of it on
+    // a route that has been picked before, and all of it on one that has been
+    // picked and not changed since.
+    const missing = await missingTiles(plan.urls);
+    if (missing.length === 0) {
         return;
     }
-    lastPlanned = signature;
 
     controller?.abort();
     controller = new AbortController();
-    const mine = controller;
-
-    const result = await fetchTiles(plan.urls, () => {}, mine.signal);
-    if (mine.signal.aborted) {
-        return;
-    }
-    toast.success(i18n._('offline.fetched').replace('{n}', String(result.done - result.failed)));
+    await fetchTiles(missing, () => {}, controller.signal);
 }
 
 function schedule() {

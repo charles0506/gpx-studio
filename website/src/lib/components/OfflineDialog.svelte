@@ -5,7 +5,7 @@
     import { Slider } from '$lib/components/ui/slider';
     import { CloudDownload, LoaderCircle } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
-    import { fetchTiles, planTiles, type Progress } from '$lib/offline';
+    import { fetchTiles, missingTiles, planTiles, type Progress } from '$lib/offline';
     import { gpxStatistics } from '$lib/logic/statistics';
     import { settings } from '$lib/logic/settings';
     import { MAX_TILE_ENTRIES } from '$lib/offline-limits';
@@ -30,12 +30,29 @@
 
     let tooMany = $derived(plan.urls.length > MAX_TILE_ENTRIES);
 
+    // What is left to fetch, which on a route picked before is usually none of
+    // it. Recounted whenever the plan changes.
+    let missing: string[] = $state([]);
+    $effect(() => {
+        const urls = plan.urls;
+        let current = true;
+        missingTiles(urls).then((result) => {
+            if (current) {
+                missing = result;
+            }
+        });
+        return () => {
+            current = false;
+        };
+    });
+
     async function start() {
         busy = true;
         controller = new AbortController();
-        progress = { done: 0, total: plan.urls.length, failed: 0 };
+        progress = { done: 0, total: missing.length, failed: 0 };
         try {
-            progress = await fetchTiles(plan.urls, (p) => (progress = p), controller.signal);
+            progress = await fetchTiles(missing, (p) => (progress = p), controller.signal);
+            missing = await missingTiles(plan.urls);
         } finally {
             busy = false;
             controller = undefined;
@@ -68,7 +85,8 @@
             <div class="flex flex-row justify-between text-sm">
                 <span>{i18n._('offline.tiles')}</span>
                 <span class="tabular-nums" class:text-destructive={tooMany}>
-                    {plan.urls.length} · {plan.megabytes.toFixed(0)} MB
+                    {missing.length} / {plan.urls.length} ·
+                    {((missing.length * plan.megabytes) / Math.max(plan.urls.length, 1)).toFixed(0)} MB
                 </span>
             </div>
 
@@ -101,7 +119,7 @@
                 <Button
                     variant="outline"
                     class="grow gap-1.5"
-                    disabled={busy || plan.urls.length === 0}
+                    disabled={busy || missing.length === 0}
                     onclick={start}
                 >
                     {#if busy}

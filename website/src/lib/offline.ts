@@ -1,6 +1,7 @@
 import { get, writable } from 'svelte/store';
 import { map } from '$lib/components/map/map';
 import { gpxStatistics } from '$lib/logic/statistics';
+import { TILE_CACHE } from '$lib/offline-limits';
 
 /**
  * Tiles are cached as they are fetched, one file per zoom level, so a route
@@ -97,6 +98,31 @@ export function planTiles(zooms: number[], templates = activeTemplates()): TileP
     }
 
     return { urls, megabytes: (urls.length * TILE_BYTES) / (1024 * 1024) };
+}
+
+/**
+ * The ones not already stored. Asking the cache is better than remembering
+ * what was fetched: it survives a reload, it knows about tiles the map itself
+ * happened to draw, and it is the same question the worker will ask when the
+ * request goes out anyway.
+ */
+export async function missingTiles(urls: string[]): Promise<string[]> {
+    if (typeof caches === 'undefined') {
+        return urls;
+    }
+    try {
+        const cache = await caches.open(TILE_CACHE);
+        const missing: string[] = [];
+        for (const url of urls) {
+            if (!(await cache.match(url))) {
+                missing.push(url);
+            }
+        }
+        return missing;
+    } catch {
+        // No cache to consult is the same as nothing being in it.
+        return urls;
+    }
 }
 
 export type Progress = { done: number; total: number; failed: number };

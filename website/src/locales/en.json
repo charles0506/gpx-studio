@@ -627,7 +627,6 @@
         "failed": "{n} failed",
         "too_many": "More than {n} tiles: the oldest will be dropped to make room. Narrow the zoom range.",
         "automatic": "Fetch tiles when a route is picked",
-        "fetched": "{n} tiles kept for offline",
         "note": "Tiles are kept for the layers switched on right now. Turning on another layer later means fetching again."
     },
     "sync": {

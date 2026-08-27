@@ -11,3 +11,6 @@
  * shares it and must not pull the map or the app's state in behind it.
  */
 export const MAX_TILE_ENTRIES = 20000;
+
+/** The cache the worker keeps map data in, across deploys. */
+export const TILE_CACHE = 'map-data';

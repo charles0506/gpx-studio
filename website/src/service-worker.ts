@@ -2,13 +2,12 @@
 /// <reference lib="webworker" />
 
 import { base, build, files, prerendered, version } from '$service-worker';
-import { MAX_TILE_ENTRIES } from '$lib/offline-limits';
+import { MAX_TILE_ENTRIES, TILE_CACHE } from '$lib/offline-limits';
 
 // A hiker loses signal long before they lose interest in the map, so two
 // separate caches: the app itself, replaced wholesale on every deploy, and the
 // map data, which is expensive to fetch and worth keeping across deploys.
 const APP_CACHE = `app-${version}`;
-const TILE_CACHE = 'map-data';
 
 // The ceiling lives in $lib so that the dialog planning a fetch and the worker
 // trimming the cache cannot disagree about it. Browsers evict the whole origin

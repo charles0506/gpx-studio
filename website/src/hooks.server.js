@@ -23,24 +23,24 @@ export async function handle({ event, resolve }) {
     const htmlTag = `<html lang="${language}" translate="no">`;
 
     let headTag = `<head>
-    <title>gpx.studio — ${title}</title>
+    <title>GPX.快到了 — ${title}</title>
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
         "@type": "WebSite",
-        "name": "gpx.studio",
+        "name": "GPX.快到了",
         "url": "https://gpx.studio"
     }
     </script>
     <meta name="description" content="${description}" />
-    <meta property="og:title" content="gpx.studio — ${title}" />
+    <meta property="og:title" content="GPX.快到了 — ${title}" />
     <meta property="og:description" content="${description}" />
-    <meta name="twitter:title" content="gpx.studio — ${title}" />
+    <meta name="twitter:title" content="GPX.快到了 — ${title}" />
     <meta name="twitter:description" content="${description}" />
     <meta property="og:image" content="https://gpx.studio${base}/og_logo.png" />
     <meta property="og:url" content="https://gpx.studio/" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="gpx.studio" />
+    <meta property="og:site_name" content="GPX.快到了" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:image" content="https://gpx.studio${base}/og_logo.png" />
     <meta name="twitter:url" content="https://gpx.studio/" />

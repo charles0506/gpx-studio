@@ -42,6 +42,15 @@ export type Sample = { km: number; elevation: number };
 const MINIMUM_GAIN = 60;
 const MAXIMUM_DIP = 25;
 /**
+ * Except that a wall is a wall. Ground this steep is hands-on-knees going up
+ * and rope going down whether it lasts sixty metres or fifteen, so it is named
+ * on its gradient alone — subject only to a floor low enough to admit a short
+ * flight of steps and high enough to keep a single bad elevation reading from
+ * inventing a climb.
+ */
+const STEEP_GRADIENT = 40;
+const MINIMUM_STEEP_GAIN = 10;
+/**
  * Ground going the right way slower than this is approach, not climb. It is
  * charged against the gain as the route is walked, so a kilometre of 3% costs
  * 30 m: a long gentle valley road cannot carry a steep finish into the same
@@ -122,10 +131,14 @@ function findSegments(samples: Sample[], kind: SegmentKind): Climb[] {
     const close = (start: Sample, top: Sample) => {
         const gain = up(top) - up(start);
         const length = top.km - start.km;
-        if (gain < MINIMUM_GAIN || length <= 0) {
+        if (length <= 0) {
             return;
         }
         const gradient = (gain / (length * 1000)) * 100;
+        const wall = gradient >= STEEP_GRADIENT && gain >= MINIMUM_STEEP_GAIN;
+        if (!wall && gain < MINIMUM_GAIN) {
+            return;
+        }
         const score = length * 1000 * gradient;
         segments.push({
             kind,

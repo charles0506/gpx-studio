@@ -57,6 +57,7 @@
         "toggle_street_view": "街景",
         "layers": "地圖圖層...",
         "distance_markers": "距離標記",
+        "show_selected_only": "只顯示選取的路線",
         "center_on_selection": "選取時置中",
         "direction_markers": "方向箭頭",
         "help": "幫助",

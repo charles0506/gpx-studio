@@ -57,6 +57,7 @@
         "toggle_street_view": "Street view",
         "layers": "Map layers...",
         "distance_markers": "Distance markers",
+        "show_selected_only": "Show selected route only",
         "center_on_selection": "Center on selection",
         "direction_markers": "Direction arrows",
         "help": "Help",

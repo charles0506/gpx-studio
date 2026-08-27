@@ -312,6 +312,7 @@ export const settings = {
     ),
     directionMarkers: new Setting('directionMarkers', false),
     centerOnSelection: new Setting('centerOnSelection', false),
+    showSelectedOnly: new Setting('showSelectedOnly', false),
     distanceMarkers: new Setting('distanceMarkers', false),
     streetViewSource: new Setting<StreetViewSource>(
         'streetViewSource',

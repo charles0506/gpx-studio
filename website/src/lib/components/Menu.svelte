@@ -15,6 +15,7 @@
         Layers2,
         Box,
         Crosshair,
+        Route,
         Milestone,
         Coins,
         Ruler,
@@ -89,6 +90,7 @@
         distanceMarkers,
         directionMarkers,
         centerOnSelection,
+        showSelectedOnly,
         streetViewSource,
         routing,
     } = settings;
@@ -401,6 +403,9 @@
                     </Menubar.CheckboxItem>
                     <Menubar.CheckboxItem bind:checked={$centerOnSelection}>
                         <Crosshair size="16" />{i18n._('menu.center_on_selection')}
+                    </Menubar.CheckboxItem>
+                    <Menubar.CheckboxItem bind:checked={$showSelectedOnly}>
+                        <Route size="16" />{i18n._('menu.show_selected_only')}
                     </Menubar.CheckboxItem>
                     <Menubar.Separator />
                     <Menubar.Item inset onclick={() => map.toggle3D()}>

@@ -70,39 +70,73 @@ sw.addEventListener('activate', (event) => {
 const TRIM_EVERY = 100;
 let putsSinceTrim = 0;
 
-async function trimTileCache() {
-    if (++putsSinceTrim < TRIM_EVERY) {
+async function trimTileCache(force = false) {
+    if (!force && ++putsSinceTrim < TRIM_EVERY) {
         return;
     }
     putsSinceTrim = 0;
 
     const cache = await caches.open(TILE_CACHE);
     const keys = await cache.keys();
-    if (keys.length <= MAX_TILE_ENTRIES) {
+    // Forced means a put has just failed for want of room, so trimming to the
+    // ceiling is not enough: take a tenth off it as well.
+    const ceiling = force ? Math.floor(MAX_TILE_ENTRIES * 0.9) : MAX_TILE_ENTRIES;
+    if (keys.length <= ceiling) {
         return;
     }
     // Cache.keys() returns insertion order, so the front of the list is oldest.
-    await Promise.all(
-        keys.slice(0, keys.length - MAX_TILE_ENTRIES).map((key) => cache.delete(key))
-    );
+    await Promise.all(keys.slice(0, keys.length - ceiling).map((key) => cache.delete(key)));
+}
+
+/**
+ * Storing a tile must never cost the tile. The cache fills up sooner or later
+ * — twenty thousand of them is the better part of a gigabyte — and a put that
+ * throws would take the whole handler down with it, which the browser reports
+ * as a network error and the map as a tile that would not load. So: make room
+ * and try once more, and if it still will not fit, the map keeps its tile.
+ */
+async function store(cache: Cache, request: Request, response: Response): Promise<void> {
+    try {
+        await cache.put(request, response.clone());
+        void trimTileCache();
+    } catch {
+        await trimTileCache(true);
+        try {
+            await cache.put(request, response.clone());
+        } catch {
+            // Out of room even after trimming. Not worth the tile.
+        }
+    }
 }
 
 // Map data: serve the cached copy immediately when there is one, and only reach
 // for the network otherwise. Tiles do not change often enough to justify paying
 // the latency on every pan.
+//
+// A handler that rejects reaches the page as a network error, so this one does
+// not: with no network and nothing cached there is nothing to show, and saying
+// so quietly beats an exception for every tile on the screen.
 async function handleTile(request: Request): Promise<Response> {
-    const cache = await caches.open(TILE_CACHE);
-    const cached = await cache.match(request);
-    if (cached) {
-        return cached;
+    let cache: Cache | undefined = undefined;
+    try {
+        cache = await caches.open(TILE_CACHE);
+        const cached = await cache.match(request);
+        if (cached) {
+            return cached;
+        }
+    } catch {
+        // No cache to read from; the network is the only hope.
     }
 
-    const response = await fetch(request);
-    if (response.ok) {
-        await cache.put(request, response.clone());
-        void trimTileCache();
+    try {
+        const response = await fetch(request);
+        if (response.ok && cache) {
+            await store(cache, request, response);
+        }
+        return response;
+    } catch {
+        return new Response('', { status: 504, statusText: 'offline' });
     }
-    return response;
 }
 
 // The app shell: the build output is content-hashed, so a hit is always current.
@@ -121,7 +155,11 @@ async function handleAppAsset(request: Request, url: URL): Promise<Response> {
     try {
         const response = await fetch(request);
         if (response.ok && request.method === 'GET') {
-            await cache.put(request, response.clone());
+            try {
+                await cache.put(request, response.clone());
+            } catch {
+                // Out of room. The response itself is still good.
+            }
         }
         return response;
     } catch (error) {

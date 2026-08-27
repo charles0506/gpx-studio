@@ -12,11 +12,12 @@ import { TILE_CACHE } from '$lib/offline-limits';
 
 export type TilePlan = {
     urls: string[];
-    /** Rough, at the 25 kB a raster tile of a topographic map tends to weigh. */
+    /** Rough, at the 40 kB a raster tile of a topographic map tends to weigh. */
     megabytes: number;
 };
 
-const TILE_BYTES = 25 * 1024;
+// Measured on 魯地圖: 64 kB at z16, 46 at z17, 36 at z18, 25 at z19.
+const TILE_BYTES = 40 * 1024;
 
 function tileX(lon: number, zoom: number): number {
     return Math.floor(((lon + 180) / 360) * Math.pow(2, zoom));

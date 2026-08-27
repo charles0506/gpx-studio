@@ -59,6 +59,12 @@ export async function handle({ event, resolve }) {
     const response = await resolve(event, {
         transformPageChunk: ({ html }) =>
             html.replace('<html>', htmlTag).replace('<head>', headTag),
+        // No modulepreload hints for the scripts. The service worker answers
+        // those requests from its own cache, and a preload fetched in the
+        // page's world cannot be matched to a response from the worker's: the
+        // browser discards all ninety of them and says so twice each. The
+        // stylesheets keep theirs — nothing renders until they land.
+        preload: ({ type }) => type === 'css' || type === 'font',
     });
 
     return response;

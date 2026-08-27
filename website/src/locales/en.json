@@ -618,13 +618,10 @@
     "enable_webgl2": "Learn how to enable WebGL 2 in your browser",
     "page_not_found": "page not found",
     "offline": {
-        "title": "Download offline tiles",
-        "description": "Fetch the map tiles along the selected route so they are there without a signal.",
+        "title": "Offline tiles",
+        "description": "Map tiles for the route you pick are fetched in the background, at these zoom levels.",
         "zoom_levels": "Zoom levels",
         "tiles": "Tiles",
-        "download": "Download",
-        "stop": "Stop",
-        "failed": "{n} failed",
         "too_many": "More than {n} tiles: the oldest will be dropped to make room. Narrow the zoom range.",
         "automatic": "Fetch tiles when a route is picked",
         "note": "Tiles are kept for the layers switched on right now. Turning on another layer later means fetching again."

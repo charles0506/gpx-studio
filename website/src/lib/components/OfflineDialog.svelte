@@ -1,11 +1,9 @@
 <script lang="ts">
     import * as Dialog from '$lib/components/ui/dialog';
-    import { Button } from '$lib/components/ui/button';
     import { Label } from '$lib/components/ui/label/index.js';
     import { Slider } from '$lib/components/ui/slider';
-    import { CloudDownload, LoaderCircle } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
-    import { fetchTiles, missingTiles, planTiles, type Progress } from '$lib/offline';
+    import { missingTiles, planTiles } from '$lib/offline';
     import { gpxStatistics } from '$lib/logic/statistics';
     import { settings } from '$lib/logic/settings';
     import { MAX_TILE_ENTRIES } from '$lib/offline-limits';
@@ -13,10 +11,6 @@
     const { offlineZoomRange } = settings;
 
     let { open = $bindable(false) }: { open: boolean } = $props();
-
-    let busy = $state(false);
-    let progress: Progress | undefined = $state(undefined);
-    let controller: AbortController | undefined = undefined;
 
     let zooms = $derived(
         Array.from(
@@ -30,8 +24,7 @@
 
     let tooMany = $derived(plan.urls.length > MAX_TILE_ENTRIES);
 
-    // What is left to fetch, which on a route picked before is usually none of
-    // it. Recounted whenever the plan changes.
+    // What is left to fetch, which on a route already fetched is none of it.
     let missing: string[] = $state([]);
     $effect(() => {
         const urls = plan.urls;
@@ -45,23 +38,6 @@
             current = false;
         };
     });
-
-    async function start() {
-        busy = true;
-        controller = new AbortController();
-        progress = { done: 0, total: missing.length, failed: 0 };
-        try {
-            progress = await fetchTiles(missing, (p) => (progress = p), controller.signal);
-            missing = await missingTiles(plan.urls);
-        } finally {
-            busy = false;
-            controller = undefined;
-        }
-    }
-
-    function stop() {
-        controller?.abort();
-    }
 </script>
 
 <Dialog.Root bind:open>
@@ -82,11 +58,14 @@
                 <Slider type="multiple" bind:value={$offlineZoomRange} min={10} max={18} step={1} />
             </div>
 
+            <!-- What the route selected right now would cost, so the slider can
+                 be set against a real number rather than a guess. -->
             <div class="flex flex-row justify-between text-sm">
                 <span>{i18n._('offline.tiles')}</span>
                 <span class="tabular-nums" class:text-destructive={tooMany}>
                     {missing.length} / {plan.urls.length} ·
-                    {((missing.length * plan.megabytes) / Math.max(plan.urls.length, 1)).toFixed(0)} MB
+                    {((missing.length * plan.megabytes) / Math.max(plan.urls.length, 1)).toFixed(0)}
+                    MB
                 </span>
             </div>
 
@@ -95,44 +74,6 @@
                     {i18n._('offline.too_many').replace('{n}', String(MAX_TILE_ENTRIES))}
                 </span>
             {/if}
-
-            {#if progress}
-                <div class="flex flex-col gap-1">
-                    <div class="h-2 rounded bg-muted overflow-hidden">
-                        <div
-                            class="h-full bg-primary"
-                            style="width: {progress.total > 0
-                                ? (progress.done / progress.total) * 100
-                                : 0}%"
-                        ></div>
-                    </div>
-                    <span class="text-xs text-muted-foreground tabular-nums">
-                        {progress.done} / {progress.total}
-                        {#if progress.failed > 0}
-                            · {i18n._('offline.failed').replace('{n}', String(progress.failed))}
-                        {/if}
-                    </span>
-                </div>
-            {/if}
-
-            <div class="flex flex-row gap-2">
-                <Button
-                    variant="outline"
-                    class="grow gap-1.5"
-                    disabled={busy || missing.length === 0}
-                    onclick={start}
-                >
-                    {#if busy}
-                        <LoaderCircle size="16" class="animate-spin" />
-                    {:else}
-                        <CloudDownload size="16" />
-                    {/if}
-                    {i18n._('offline.download')}
-                </Button>
-                {#if busy}
-                    <Button variant="outline" onclick={stop}>{i18n._('offline.stop')}</Button>
-                {/if}
-            </div>
 
             <span class="text-xs text-muted-foreground">{i18n._('offline.note')}</span>
         </div>

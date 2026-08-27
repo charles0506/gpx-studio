@@ -14,6 +14,7 @@
     import { climbCursorKm, climbScreen } from '$lib/climb-view';
     import {
         livePosition,
+        OFF_ROUTE_METERS,
         progressAlongRoute,
         trackingSince,
         verticalSpeed,
@@ -75,9 +76,8 @@
 
     // A fix is projected onto the nearest point of the route however far away
     // it is, so without this the panel counts down a climb you are not on.
-    const OFF_ROUTE_M = 60;
     let strayed = $derived(
-        progress && progress.offRouteMeters > OFF_ROUTE_M ? progress.offRouteMeters : undefined
+        progress && progress.offRouteMeters > OFF_ROUTE_METERS ? progress.offRouteMeters : undefined
     );
 
     let gained = $derived(current && here !== undefined ? climbGainSoFar(current, here) : 0);

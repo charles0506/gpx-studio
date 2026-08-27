@@ -24,7 +24,7 @@ import { get, type Readable, type Writable } from 'svelte/store';
 import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
 import { departureTime, routeRainfall } from '$lib/weather';
-import { livePosition, progressAlongRoute } from '$lib/live-position';
+import { livePosition, OFF_ROUTE_METERS, progressAlongRoute } from '$lib/live-position';
 import { climbCursorKm } from '$lib/climb-view';
 import { findClimbsAndDescents, gradientColour } from '$lib/climbs';
 import { cumulativeHikingTime, secondsAt, type HikingTimePoint } from '$lib/hiking-time';
@@ -751,6 +751,12 @@ export class ElevationProfile {
     private drawLivePosition() {
         const progress = progressAlongRoute(get(livePosition));
         if (!progress || !this._chart) {
+            return;
+        }
+        // Sitting at home, the nearest point of a route in the hills is one of
+        // its ends, and a marker there says you are standing on it. The panel
+        // on the map says how far off you are; this says nothing at all.
+        if (progress.offRouteMeters > OFF_ROUTE_METERS) {
             return;
         }
 

@@ -95,6 +95,13 @@ export function verticalSpeed(): number | undefined {
     return Math.round(((last.gain - first.gain) / seconds) * 3600);
 }
 
+/**
+ * Far enough off the route that a position projected onto it is a guess
+ * rather than a reading. A fix wanders by a few tens of metres under trees;
+ * this is well past that.
+ */
+export const OFF_ROUTE_METERS = 60;
+
 export type RouteProgress = {
     /** How far along the selected route the position projects, in kilometres. */
     km: number;

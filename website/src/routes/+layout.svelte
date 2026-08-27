@@ -56,12 +56,7 @@
 
     $effect(() => {
         if (i18n.isLoading) return;
-        let title = `就快到了 — ${i18n._(`metadata.${page.route.id?.replace('/[[language]]', '').split('/')[1] ?? 'home'}_title`)}`;
-        if (page.params.guide) {
-            document.title = `${title} | ${data.guideTitles[page.params.guide]}`;
-        } else {
-            document.title = title;
-        }
+        document.title = '快到了';
     });
 
     let showNavAndFooter = $derived(page.route.id === null || !appRoutes.includes(page.route.id));

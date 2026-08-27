@@ -55,7 +55,7 @@
                         {$offlineZoomRange[0]} – {$offlineZoomRange[1]}
                     </span>
                 </Label>
-                <Slider type="multiple" bind:value={$offlineZoomRange} min={10} max={18} step={1} />
+                <Slider type="multiple" bind:value={$offlineZoomRange} min={10} max={20} step={1} />
             </div>
 
             <!-- What the route selected right now would cost, so the slider can

@@ -1,6 +1,7 @@
 import { get, writable } from 'svelte/store';
 import { map } from '$lib/components/map/map';
 import { gpxStatistics } from '$lib/logic/statistics';
+import type { GPXStatisticsGroup } from 'gpx';
 import { TILE_CACHE } from '$lib/offline-limits';
 
 /**
@@ -58,12 +59,36 @@ export function activeTemplates(): string[] {
  * exactly one tile wide.
  */
 export function planTiles(zooms: number[], templates = activeTemplates()): TilePlan {
-    const statistics = get(gpxStatistics);
+    return planTilesFor(get(gpxStatistics), zooms, templates);
+}
+
+/** The same, for a route that is not the one selected. */
+export function planTilesFor(
+    statistics: GPXStatisticsGroup | undefined,
+    zooms: number[],
+    templates = activeTemplates()
+): TilePlan {
     if (!statistics?.forEachTrackPoint || templates.length === 0) {
         return { urls: [], megabytes: 0 };
     }
 
+    const wanted = tileKeysFor(statistics, zooms);
+    const urls: string[] = [];
+    for (const key of wanted) {
+        urls.push(...urlsForKey(key, templates));
+    }
+    return { urls, megabytes: (urls.length * TILE_BYTES) / (1024 * 1024) };
+}
+
+/** Which tiles a route passes through, as "z/x/y", without building URLs. */
+export function tileKeysFor(
+    statistics: GPXStatisticsGroup | undefined,
+    zooms: number[]
+): Set<string> {
     const wanted = new Set<string>();
+    if (!statistics?.forEachTrackPoint) {
+        return wanted;
+    }
     for (const zoom of zooms) {
         const scale = Math.pow(2, zoom);
         statistics.forEachTrackPoint((point) => {
@@ -83,22 +108,42 @@ export function planTiles(zooms: number[], templates = activeTemplates()): TileP
         });
     }
 
-    const urls: string[] = [];
-    for (const key of wanted) {
-        const [z, x, y] = key.split('/');
-        for (const template of templates) {
-            urls.push(
-                template
-                    .replace('{z}', z)
-                    .replace('{x}', x)
-                    .replace('{y}', y)
-                    .replace('{ratio}', '')
-                    .replace('{s}', 'a')
-            );
-        }
-    }
+    return wanted;
+}
 
-    return { urls, megabytes: (urls.length * TILE_BYTES) / (1024 * 1024) };
+/** Every URL a tile could have been fetched under, for the layers in use. */
+export function urlsForKey(key: string, templates = activeTemplates()): string[] {
+    const [z, x, y] = key.split('/');
+    return templates.map((template) =>
+        template
+            .replace('{z}', z)
+            .replace('{x}', x)
+            .replace('{y}', y)
+            .replace('{ratio}', '')
+            .replace('{s}', 'a')
+    );
+}
+
+/** Remove tiles from the store. Used when the route that wanted them goes. */
+export async function forgetTiles(keys: Iterable<string>): Promise<number> {
+    if (typeof caches === 'undefined') {
+        return 0;
+    }
+    try {
+        const cache = await caches.open(TILE_CACHE);
+        const templates = activeTemplates();
+        let removed = 0;
+        for (const key of keys) {
+            for (const url of urlsForKey(key, templates)) {
+                if (await cache.delete(url)) {
+                    removed += 1;
+                }
+            }
+        }
+        return removed;
+    } catch {
+        return 0;
+    }
 }
 
 /**

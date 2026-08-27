@@ -9,6 +9,7 @@
     import StreetViewControl from '$lib/components/map/street-view-control/StreetViewControl.svelte';
     import RadarControl from '$lib/components/map/radar-control/RadarControl.svelte';
     import ClimbControl from '$lib/components/map/climb-control/ClimbControl.svelte';
+    import TrailLayer from '$lib/components/map/trail/TrailLayer.svelte';
     import ClimbBanner from '$lib/components/map/ClimbBanner.svelte';
     import LayerControl from '$lib/components/map/layer-control/LayerControl.svelte';
     import CoordinatesPopup from '$lib/components/map/CoordinatesPopup.svelte';
@@ -128,6 +129,7 @@
             <RadarControl />
             <LayerControl />
             <GPXLayers />
+            <TrailLayer />
             <CoordinatesPopup />
             <Toaster richColors />
             {#if !$treeFileView}

@@ -1,8 +1,10 @@
 import {
     clearProgressHistory,
+    clearTrail,
     livePosition,
     progressAlongRoute,
     recordProgress,
+    recordTrail,
     trackingSince,
 } from '$lib/live-position';
 import * as maplibregl from 'maplibre-gl';
@@ -141,12 +143,16 @@ export class MapLibreGLMap {
                 if (progress) {
                     recordProgress(progress.gain, position.at);
                 }
+                recordTrail(position);
 
                 livePosition.set(position);
             });
             geolocateControl.on('trackuserlocationstart', () => {
                 trackingSince.set(new Date());
                 clearProgressHistory();
+                // Each time tracking starts is a fresh walk; what was drawn
+                // behind you last time is not part of this one.
+                clearTrail();
             });
             const stopTracking = () => {
                 livePosition.set(undefined);

@@ -20,6 +20,46 @@ export const livePosition = writable<LivePosition | undefined>(undefined);
 // When tracking began, for the elapsed clock. Cleared when it stops.
 export const trackingSince = writable<Date | undefined>(undefined);
 
+/**
+ * Where you have actually been since tracking started, for drawing behind you.
+ *
+ * Only what the page saw: a browser suspends the watch when the screen locks
+ * or the tab goes to the background, so this is a record of the walk only for
+ * as long as the walk was being watched. It is a check on where you just went,
+ * not a track log.
+ */
+export type TrailPoint = { lat: number; lon: number; at: number };
+
+// Far enough apart to be movement rather than the fix wandering, and enough
+// of them for a long day at one a second.
+const MINIMUM_STEP_M = 5;
+const MAXIMUM_TRAIL_POINTS = 20000;
+
+export const trail = writable<TrailPoint[]>([]);
+
+export function recordTrail(position: LivePosition): void {
+    trail.update((points) => {
+        const last = points.at(-1);
+        if (
+            last &&
+            distanceMeters(last.lat, last.lon, position.lat, position.lon) < MINIMUM_STEP_M
+        ) {
+            return points;
+        }
+        const next = [
+            ...points,
+            { lat: position.lat, lon: position.lon, at: position.at.getTime() },
+        ];
+        return next.length > MAXIMUM_TRAIL_POINTS
+            ? next.slice(next.length - MAXIMUM_TRAIL_POINTS)
+            : next;
+    });
+}
+
+export function clearTrail(): void {
+    trail.set([]);
+}
+
 // A short history of where you were, in distance along the route. Vertical
 // speed is taken from this rather than from the GPS altitude, which wanders by
 // tens of metres while standing still; the route's own elevation at a projected

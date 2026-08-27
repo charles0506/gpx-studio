@@ -29,6 +29,7 @@
     import { GPXTreeElement, Track, type AnyGPXTreeElement, Waypoint, GPXFile } from 'gpx';
     import { i18n } from '$lib/i18n.svelte';
     import { closeFile } from '$lib/logic/closed-files';
+
     import { X } from '@lucide/svelte';
     import MetadataDialog from '$lib/components/file-list/metadata/MetadataDialog.svelte';
     import { editMetadata } from '$lib/components/file-list/metadata/utils.svelte';

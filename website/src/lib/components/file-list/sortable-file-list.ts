@@ -5,6 +5,7 @@ import { selection } from '$lib/logic/selection';
 import { getFileIds, moveItems } from '$lib/logic/file-actions';
 import { get, writable, type Readable } from 'svelte/store';
 import { settings } from '$lib/logic/settings';
+import { multiSelectMode } from '$lib/logic/multi-select';
 import type { GPXFileWithStatistics } from '$lib/logic/statistics-tree';
 import type { AnyGPXTreeElement, GPXTreeElement, Waypoint } from 'gpx';
 import { tick } from 'svelte';
@@ -41,6 +42,7 @@ export class SortableFileList {
     private _sortableLevel: ListLevel;
     private _container: HTMLElement;
     private _sortable: Sortable | null = null;
+    private _claimModifier: ((event: PointerEvent) => void) | null = null;
     private _elements: { [id: string]: HTMLElement } = {};
     private _updatingSelection: boolean = false;
     private _unsubscribes: (() => void)[] = [];
@@ -61,6 +63,24 @@ export class SortableFileList {
         this._item = item;
         this._sortableLevel = sortableLevel;
         this._container = container;
+        // Ctrl is what a desktop holds down to add to a selection and a phone
+        // has no way to say. In the mode, every pointer that goes down on the
+        // list claims the modifier, which is the one thing Sortable looks at.
+        this._claimModifier = (event: PointerEvent) => {
+            if (!get(multiSelectMode)) {
+                return;
+            }
+            for (const key of ['ctrlKey', 'metaKey']) {
+                try {
+                    Object.defineProperty(event, key, { value: true, configurable: true });
+                } catch {
+                    // Some other listener got there first; the other key will do.
+                }
+            }
+        };
+        container.addEventListener('pointerdown', this._claimModifier, true);
+        container.addEventListener('mousedown', this._claimModifier as EventListener, true);
+
         this._sortable = Sortable.create(container, {
             group: {
                 name: sortableLevel,
@@ -200,6 +220,7 @@ export class SortableFileList {
 
             if (
                 e.originalEvent &&
+                !get(multiSelectMode) &&
                 !(e.originalEvent.ctrlKey || e.originalEvent.metaKey || e.originalEvent.shiftKey) &&
                 ($selection.size > 1 ||
                     !$selection.has(this._item.extend(this.getRealId(changed[0]))))
@@ -262,6 +283,15 @@ export class SortableFileList {
     }
 
     destroy() {
+        if (this._container && this._claimModifier) {
+            this._container.removeEventListener('pointerdown', this._claimModifier, true);
+            this._container.removeEventListener(
+                'mousedown',
+                this._claimModifier as EventListener,
+                true
+            );
+        }
+        this._claimModifier = null;
         this._sortable = null;
         this._unsubscribes.forEach((unsubscribe) => unsubscribe());
         this._unsubscribes = [];

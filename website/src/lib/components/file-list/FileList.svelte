@@ -4,7 +4,8 @@
     import FileListNode from './FileListNode.svelte';
     import { onMount, setContext } from 'svelte';
     import { ListFileItem, ListLevel, ListRootItem } from './file-list';
-    import { ClipboardPaste, FileStack, Plus, X } from '@lucide/svelte';
+    import { ClipboardPaste, FileStack, ListChecks, Plus, X } from '@lucide/svelte';
+    import { multiSelectMode } from '$lib/logic/multi-select';
     import { Button } from '$lib/components/ui/button';
     import { settings } from '$lib/logic/settings';
     import Shortcut from '$lib/components/Shortcut.svelte';
@@ -74,6 +75,18 @@
                 <span class="grow text-xs text-muted-foreground truncate">
                     {i18n._('menu.tree_file_view')}
                 </span>
+                <!-- Ctrl is what a desktop holds down to add to a selection,
+                     and a phone has no way to say it. -->
+                <Button
+                    variant="ghost"
+                    class="w-6 h-6 p-0 shrink-0 {$multiSelectMode
+                        ? 'bg-accent text-accent-foreground'
+                        : ''}"
+                    title={i18n._('menu.multi_select')}
+                    onclick={() => multiSelectMode.update((on) => !on)}
+                >
+                    <ListChecks size="14" />
+                </Button>
                 <Button
                     variant="ghost"
                     class="w-6 h-6 p-0 shrink-0"

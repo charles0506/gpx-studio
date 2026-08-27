@@ -15,8 +15,10 @@
         slot,
         slotLabels,
         slots,
+        syncSettings,
         upload,
     } from '$lib/sync';
+    import { Checkbox } from '$lib/components/ui/checkbox';
     import { selection } from '$lib/logic/selection';
     import { User } from '@lucide/svelte';
 
@@ -96,6 +98,14 @@
                     placeholder={i18n._('sync.passphrase_placeholder')}
                 />
             </div>
+
+            <!-- Units, basemap, thresholds: the same person on another device
+                 wants the same ones. Ids, panel sizes and the line width picked
+                 from a screen are left behind. -->
+            <Label class="flex flex-row items-center gap-1.5 leading-5 font-normal">
+                <Checkbox bind:checked={$syncSettings} />
+                {i18n._('sync.include_settings')}
+            </Label>
 
             <div class="flex flex-row gap-2">
                 <Button

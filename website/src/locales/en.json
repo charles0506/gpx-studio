@@ -651,6 +651,7 @@
         "current": "Today",
         "send_to_current": "Send selection to today",
         "sent": "Sent {n} route(s) to today",
+        "include_settings": "Settings as well as routes",
         "warning": "Upload replaces what is stored; download replaces what is open. There is no merge.",
         "slot": "Workspace",
         "slot_name": "Name this workspace (on this device)"

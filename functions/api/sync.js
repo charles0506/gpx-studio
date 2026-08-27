@@ -123,6 +123,11 @@ export async function onRequestPut({ request, env }) {
 
     const stored = JSON.stringify({
         files: payload.files,
+        // Carried when the browser sends it: the same person's other device
+        // wants the same units, the same basemap and the same thresholds.
+        ...(payload.settings && typeof payload.settings === 'object'
+            ? { settings: payload.settings }
+            : {}),
         updatedAt: new Date().toISOString(),
     });
 

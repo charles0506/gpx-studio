@@ -85,8 +85,68 @@ export type SyncedFile = {
 
 export type Workspace = {
     files: SyncedFile[];
+    settings?: Record<string, unknown>;
     updatedAt: string | null;
 };
+
+/**
+ * Settings that mean something on one device and nothing on another: file
+ * ids that differ per browser, panel sizes and a default line width chosen
+ * from the screen it was first opened on.
+ */
+const DEVICE_ONLY = new Set([
+    'fileOrder',
+    'bottomPanelSize',
+    'rightPanelSize',
+    'defaultWidth',
+    'treeFileView',
+]);
+
+// Whether the settings travel with the files. Kept in the browser rather than
+// in the settings themselves, which would be a setting about syncing settings.
+const SETTINGS_KEY = 'syncSettings';
+
+function readStoredSyncSettings(): boolean {
+    if (typeof localStorage === 'undefined') {
+        return true;
+    }
+    return localStorage.getItem(SETTINGS_KEY) !== 'false';
+}
+
+export const syncSettings = writable(readStoredSyncSettings());
+
+syncSettings.subscribe((value) => {
+    if (typeof localStorage !== 'undefined') {
+        localStorage.setItem(SETTINGS_KEY, value ? 'true' : 'false');
+    }
+});
+
+/** Everything worth carrying between devices, as plain values. */
+export function collectSettings(): Record<string, unknown> {
+    const collected: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(settings)) {
+        if (DEVICE_ONLY.has(key) || !value || typeof (value as any).subscribe !== 'function') {
+            continue;
+        }
+        collected[key] = get(value as any);
+    }
+    return collected;
+}
+
+export function applySettings(stored: Record<string, unknown> | undefined): number {
+    let applied = 0;
+    for (const [key, value] of Object.entries(stored ?? {})) {
+        if (DEVICE_ONLY.has(key)) {
+            continue;
+        }
+        const setting = (settings as any)[key];
+        if (setting && typeof setting.set === 'function') {
+            setting.set(value);
+            applied += 1;
+        }
+    }
+    return applied;
+}
 
 async function request(
     method: 'GET' | 'PUT' | 'DELETE',
@@ -131,7 +191,8 @@ export function collectWorkspace(): SyncedFile[] {
 
 export async function upload(): Promise<{ files: number; updatedAt: string }> {
     const files = collectWorkspace();
-    return request('PUT', JSON.stringify({ files }));
+    const body = get(syncSettings) ? { files, settings: collectSettings() } : { files };
+    return request('PUT', JSON.stringify(body));
 }
 
 /** The files the list has selected, in the order the list shows them. */
@@ -200,6 +261,11 @@ export async function download(): Promise<number> {
     if (parsed.length > 0) {
         const ids = fileActions.addMultiple(parsed);
         selection.selectFileWhenLoaded(ids[0]);
+    }
+
+    // After the files, so that a setting about them lands on something.
+    if (get(syncSettings)) {
+        applySettings(workspace.settings);
     }
 
     return parsed.length;

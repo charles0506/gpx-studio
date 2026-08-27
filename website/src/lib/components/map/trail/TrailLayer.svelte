@@ -9,6 +9,7 @@
     // walk, and confusing it with the line you are meant to be following is the
     // one mistake it could cause.
     const SOURCE = 'walked-trail';
+    const CASING = 'walked-trail-casing';
 
     let instance: Map | undefined = undefined;
     let unsubscribe: (() => void) | undefined = undefined;
@@ -36,6 +37,21 @@
         if (!map_.getSource(SOURCE)) {
             map_.addSource(SOURCE, { type: 'geojson', data: data($trail) });
         }
+        // Underneath, so the dashes have something to be dark against
+        // whatever the map is doing at the time.
+        if (!map_.getLayer(CASING)) {
+            map_.addLayer({
+                id: CASING,
+                type: 'line',
+                source: SOURCE,
+                layout: { 'line-join': 'round', 'line-cap': 'round' },
+                paint: {
+                    'line-color': '#ffffff',
+                    'line-width': 7,
+                    'line-opacity': 0.75,
+                },
+            });
+        }
         if (!map_.getLayer(SOURCE)) {
             map_.addLayer({
                 id: SOURCE,
@@ -43,10 +59,10 @@
                 source: SOURCE,
                 layout: { 'line-join': 'round', 'line-cap': 'round' },
                 paint: {
-                    'line-color': '#a855f7',
-                    'line-width': 3,
-                    'line-opacity': 0.9,
-                    'line-dasharray': [1, 1.6],
+                    'line-color': '#7e22ce',
+                    'line-width': 4,
+                    'line-opacity': 1,
+                    'line-dasharray': [1.4, 1.2],
                 },
             });
         }
@@ -68,6 +84,9 @@
         if (instance) {
             if (instance.getLayer(SOURCE)) {
                 instance.removeLayer(SOURCE);
+            }
+            if (instance.getLayer(CASING)) {
+                instance.removeLayer(CASING);
             }
             if (instance.getSource(SOURCE)) {
                 instance.removeSource(SOURCE);

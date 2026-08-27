@@ -311,6 +311,7 @@ export const settings = {
         getValueValidator(['mapterhorn'], defaultTerrainSource)
     ),
     directionMarkers: new Setting('directionMarkers', false),
+    centerOnSelection: new Setting('centerOnSelection', false),
     distanceMarkers: new Setting('distanceMarkers', false),
     streetViewSource: new Setting<StreetViewSource>(
         'streetViewSource',

@@ -14,6 +14,7 @@
         Map,
         Layers2,
         Box,
+        Crosshair,
         Milestone,
         Coins,
         Ruler,
@@ -87,6 +88,7 @@
         previousOverlays,
         distanceMarkers,
         directionMarkers,
+        centerOnSelection,
         streetViewSource,
         routing,
     } = settings;
@@ -397,6 +399,9 @@
                             key="F4"
                         />
                     </Menubar.CheckboxItem>
+                    <Menubar.CheckboxItem bind:checked={$centerOnSelection}>
+                        <Crosshair size="16" />{i18n._('menu.center_on_selection')}
+                    </Menubar.CheckboxItem>
                     <Menubar.Separator />
                     <Menubar.Item inset onclick={() => map.toggle3D()}>
                         <Box size="16" />
@@ -692,6 +697,8 @@
     }}
 />
 
+<SyncDialog bind:open={syncOpen} />
+
 <style lang="postcss">
     @reference "../../app.css";
 
@@ -701,5 +708,3 @@
         @apply py-0.5;
     }
 </style>
-
-<SyncDialog bind:open={syncOpen} />

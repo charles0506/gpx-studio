@@ -8,12 +8,18 @@ import { map } from '$lib/components/map/map';
 import type { GPXFileWithStatistics } from './statistics-tree';
 import type { Coordinates } from 'gpx';
 import { page } from '$app/state';
+import { settings } from '$lib/logic/settings';
 
 export class BoundsManager {
     private _bounds: LngLatBounds = new LngLatBounds();
     private _files: Set<string> = new Set();
     private _fileStateCollectionObserver: GPXFileStateCollectionObserver | null = null;
     private _unsubscribes: (() => void)[] = [];
+
+    // Set when the selection changes, cleared by the statistics that follow it.
+    // The bounds to centre on come from those statistics, and they are still the
+    // last selection's at the moment the selection itself changes.
+    private _centerOnNextStatistics = false;
 
     constructor() {
         this._fileStateCollectionObserver = new GPXFileStateCollectionObserver(
@@ -25,6 +31,21 @@ export class BoundsManager {
             (fileId) => {},
             () => {}
         );
+
+        // Following a route on the map means finding it there first, which for a
+        // long day out is a pan and a zoom every time a file is picked from the
+        // list. Off by default: it takes the map away from wherever it was.
+        selection.subscribe((selected) => {
+            if (get(settings.centerOnSelection) && selected.size > 0) {
+                this._centerOnNextStatistics = true;
+            }
+        });
+        gpxStatistics.subscribe(() => {
+            if (this._centerOnNextStatistics) {
+                this._centerOnNextStatistics = false;
+                this.centerMapOnSelection();
+            }
+        });
     }
 
     fitBoundsOnLoad(files: string[]) {

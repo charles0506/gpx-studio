@@ -38,22 +38,17 @@ const MAXIMUM_TRAIL_POINTS = 20000;
 export const trail = writable<TrailPoint[]>([]);
 
 export function recordTrail(position: LivePosition): void {
-    trail.update((points) => {
-        const last = points.at(-1);
-        if (
-            last &&
-            distanceMeters(last.lat, last.lon, position.lat, position.lon) < MINIMUM_STEP_M
-        ) {
-            return points;
-        }
-        const next = [
-            ...points,
-            { lat: position.lat, lon: position.lon, at: position.at.getTime() },
-        ];
-        return next.length > MAXIMUM_TRAIL_POINTS
-            ? next.slice(next.length - MAXIMUM_TRAIL_POINTS)
-            : next;
-    });
+    const points = get(trail);
+    const last = points.at(-1);
+    if (last && distanceMeters(last.lat, last.lon, position.lat, position.lon) < MINIMUM_STEP_M) {
+        // Standing still. Setting the store anyway would redraw the line on the
+        // map once a second for as long as the rest stop lasts.
+        return;
+    }
+    const next = [...points, { lat: position.lat, lon: position.lon, at: position.at.getTime() }];
+    trail.set(
+        next.length > MAXIMUM_TRAIL_POINTS ? next.slice(next.length - MAXIMUM_TRAIL_POINTS) : next
+    );
 }
 
 export function clearTrail(): void {

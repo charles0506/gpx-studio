@@ -11,6 +11,7 @@
     import { createFile, pasteSelection } from '$lib/logic/file-actions';
     import { selection, copied } from '$lib/logic/selection';
     import { allowedPastes } from './sortable-file-list';
+    import LibrarySection from './LibrarySection.svelte';
 
     let {
         orientation,
@@ -64,6 +65,7 @@
     >
         <FileListNode node={$fileStateCollection} item={new ListRootItem()} />
         {#if orientation === 'vertical'}
+            <LibrarySection />
             <ContextMenu.Root>
                 <ContextMenu.Trigger class="grow" />
                 <ContextMenu.Content>

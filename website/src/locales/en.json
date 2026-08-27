@@ -626,6 +626,18 @@
         "automatic": "Fetch tiles when a route is picked",
         "note": "Tiles are kept for the layers switched on right now. Turning on another layer later means fetching again."
     },
+    "library": {
+        "title": "Route library",
+        "description": "Routes kept in the cloud one at a time. Open the one you need; the rest stay where they are.",
+        "refresh": "Refresh",
+        "remove": "Remove from library",
+        "shelve": "Put selection in the library",
+        "shelved": "{n} route(s) saved",
+        "opened": "Opened {name}",
+        "removed": "Removed",
+        "empty": "Nothing in the library yet.",
+        "note": "Opening a route adds it to what is already open. Saving a route with the same name replaces it."
+    },
     "sync": {
         "title": "Sync",
         "description": "Keep the same routes on every device, through your own Cloudflare storage.",

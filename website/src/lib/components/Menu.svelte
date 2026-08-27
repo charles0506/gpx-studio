@@ -1,5 +1,6 @@
 <script lang="ts">
     import SyncDialog from '$lib/components/SyncDialog.svelte';
+
     import OfflineDialog from '$lib/components/OfflineDialog.svelte';
     import * as Menubar from '$lib/components/ui/menubar/index.js';
     import { Button } from '$lib/components/ui/button';
@@ -133,6 +134,7 @@
     });
 
     let syncOpen = $state(false);
+
     let offlineOpen = $state(false);
 </script>
 
@@ -206,6 +208,7 @@
                         <Shortcut key="S" ctrl={true} shift={true} />
                     </Menubar.Item>
                     <Menubar.Separator />
+
                     <Menubar.Item onclick={() => (syncOpen = true)}>
                         <RefreshCw size="16" />
                         {i18n._('sync.title')}
@@ -714,6 +717,7 @@
 />
 
 <SyncDialog bind:open={syncOpen} />
+
 <OfflineDialog bind:open={offlineOpen} />
 
 <style lang="postcss">

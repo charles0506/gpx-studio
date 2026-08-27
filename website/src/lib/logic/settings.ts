@@ -314,7 +314,7 @@ export const settings = {
     centerOnSelection: new Setting('centerOnSelection', false),
     showSelectedOnly: new Setting('showSelectedOnly', false),
     offlineAutoDownload: new Setting('offlineAutoDownload', false),
-    offlineZoomRange: new Setting<number[]>('offlineZoomRange', [13, 16]),
+    offlineZoomRange: new Setting<number[]>('offlineZoomRange', [13, 18]),
     distanceMarkers: new Setting('distanceMarkers', false),
     streetViewSource: new Setting<StreetViewSource>(
         'streetViewSource',

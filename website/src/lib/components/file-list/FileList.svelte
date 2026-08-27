@@ -71,30 +71,28 @@
         {#if orientation === 'vertical'}
             <!-- The panel is opened from a menu two taps deep, and on a phone
                  that was the only way back out of it. -->
+            <!-- Words rather than glyphs: this is the way out of a panel that
+                 covers a phone, and an icon that can be mistaken for another
+                 icon is no way out at all. -->
             <div class="flex flex-row items-center gap-1 pb-1 mb-1 border-b sticky left-0">
                 <Button
-                    variant="ghost"
-                    class="w-7 h-7 p-0 shrink-0"
-                    title={i18n._('menu.close')}
+                    variant="outline"
+                    class="h-8 px-2 gap-1 shrink-0"
                     onclick={() => ($treeFileView = false)}
                 >
                     <X size="16" />
+                    <span class="text-xs">{i18n._('menu.close_short')}</span>
                 </Button>
                 <!-- Ctrl is what a desktop holds down to add to a selection,
                      and a phone has no way to say it. -->
                 <Button
-                    variant="ghost"
-                    class="w-7 h-7 p-0 shrink-0 {$multiSelectMode
-                        ? 'bg-accent text-accent-foreground'
-                        : ''}"
-                    title={i18n._('menu.multi_select')}
+                    variant={$multiSelectMode ? 'default' : 'outline'}
+                    class="h-8 px-2 gap-1 shrink-0"
                     onclick={() => multiSelectMode.update((on) => !on)}
                 >
                     <ListChecks size="16" />
+                    <span class="text-xs">{i18n._('menu.multi_select')}</span>
                 </Button>
-                <span class="grow text-xs text-muted-foreground truncate">
-                    {i18n._('menu.tree_file_view')}
-                </span>
             </div>
         {/if}
         <FileListNode node={$fileStateCollection} item={new ListRootItem()} />

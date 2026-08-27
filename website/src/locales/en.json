@@ -80,6 +80,7 @@
             "width": "Width"
         },
         "multi_select": "Select several",
+        "close_short": "Close",
         "close": "Close (stays in the file tree)",
         "hide": "Hide",
         "unhide": "Unhide",

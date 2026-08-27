@@ -80,6 +80,7 @@
             "width": "闊度"
         },
         "multi_select": "多選",
+        "update_available": "有新版本，點一下更新",
         "close_short": "關閉",
         "close": "關閉（保留在檔案樹狀圖）",
         "hide": "隱藏",

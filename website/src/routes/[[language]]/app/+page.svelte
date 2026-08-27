@@ -11,6 +11,7 @@
     import ClimbControl from '$lib/components/map/climb-control/ClimbControl.svelte';
     import TrailLayer from '$lib/components/map/trail/TrailLayer.svelte';
     import OfflineProgress from '$lib/components/OfflineProgress.svelte';
+    import UpdatePrompt from '$lib/components/UpdatePrompt.svelte';
     // Subscribes on import: fetching tiles for a route as it is picked.
     import '$lib/offline-auto';
     // Subscribes on import: forgetting a route's tiles when it is closed.
@@ -135,6 +136,7 @@
             <LayerControl />
             <GPXLayers />
             <TrailLayer />
+            <UpdatePrompt />
             <CoordinatesPopup />
             <Toaster richColors />
             <div class="absolute left-0 right-0 bottom-11 z-30 pointer-events-none px-2">

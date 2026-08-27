@@ -215,7 +215,23 @@ export class GPXLayer {
                         },
                         paint: {
                             'line-color': ['get', 'color'],
-                            'line-width': ['get', 'width'],
+                            // The set width is what the route is drawn at when
+                            // you are on it. Zoomed out it is thinned, because
+                            // eight pixels at z14 is seventy metres of ground and
+                            // buries the contour lines the map is there to show.
+                            'line-width': [
+                                'interpolate',
+                                ['linear'],
+                                ['zoom'],
+                                10,
+                                ['*', ['get', 'width'], 0.45],
+                                13,
+                                ['*', ['get', 'width'], 0.65],
+                                16,
+                                ['*', ['get', 'width'], 0.85],
+                                19,
+                                ['get', 'width'],
+                            ],
                             'line-opacity': ['get', 'opacity'],
                         },
                     },

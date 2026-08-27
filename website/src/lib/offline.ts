@@ -1,4 +1,4 @@
-import { get } from 'svelte/store';
+import { get, writable } from 'svelte/store';
 import { map } from '$lib/components/map/map';
 import { gpxStatistics } from '$lib/logic/statistics';
 
@@ -102,6 +102,15 @@ export function planTiles(zooms: number[], templates = activeTemplates()): TileP
 export type Progress = { done: number; total: number; failed: number };
 
 /**
+ * What is being fetched right now, wherever it was started from, so that one
+ * place on the screen can say so. Cleared a moment after it finishes: a bar
+ * that stays at 100% is a bar nobody reads again.
+ */
+export const tileProgress = writable<Progress | undefined>(undefined);
+const LINGER_MS = 4000;
+let clearTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+
+/**
  * Ask for them all. Nothing is stored here: the service worker is already
  * watching these hosts and files them as they arrive, which is the same path a
  * tile takes when the map draws it, so nothing can be cached in a form the map
@@ -113,6 +122,10 @@ export async function fetchTiles(
     signal?: AbortSignal
 ): Promise<Progress> {
     const progress: Progress = { done: 0, total: urls.length, failed: 0 };
+    if (clearTimer !== undefined) {
+        clearTimeout(clearTimer);
+    }
+    tileProgress.set({ ...progress });
     // Enough to keep the connection busy, few enough to leave the tile server
     // able to serve anyone else.
     const WORKERS = 6;
@@ -136,10 +149,12 @@ export async function fetchTiles(
                 progress.failed += 1;
             }
             progress.done += 1;
+            tileProgress.set({ ...progress });
             onProgress({ ...progress });
         }
     };
 
     await Promise.all(Array.from({ length: WORKERS }, worker));
+    clearTimer = setTimeout(() => tileProgress.set(undefined), LINGER_MS);
     return progress;
 }

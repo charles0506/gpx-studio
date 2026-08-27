@@ -7,18 +7,21 @@
     import { i18n } from '$lib/i18n.svelte';
     import { fetchTiles, planTiles, type Progress } from '$lib/offline';
     import { gpxStatistics } from '$lib/logic/statistics';
+    import { settings } from '$lib/logic/settings';
+
+    const { offlineZoomRange } = settings;
 
     let { open = $bindable(false) }: { open: boolean } = $props();
 
-    // The levels worth keeping for walking: far enough out to see where the
-    // ridge goes, close enough in for the contour lines to separate.
-    let zoomRange = $state([13, 16]);
     let busy = $state(false);
     let progress: Progress | undefined = $state(undefined);
     let controller: AbortController | undefined = undefined;
 
     let zooms = $derived(
-        Array.from({ length: zoomRange[1] - zoomRange[0] + 1 }, (_, i) => zoomRange[0] + i)
+        Array.from(
+            { length: $offlineZoomRange[1] - $offlineZoomRange[0] + 1 },
+            (_, i) => $offlineZoomRange[0] + i
+        )
     );
     // Recomputed while the dialog is open, since the plan follows the route
     // that is selected and the layers that are switched on.
@@ -58,10 +61,10 @@
                 <Label class="flex flex-row justify-between">
                     <span>{i18n._('offline.zoom_levels')}</span>
                     <span class="font-normal text-muted-foreground">
-                        {zoomRange[0]} – {zoomRange[1]}
+                        {$offlineZoomRange[0]} – {$offlineZoomRange[1]}
                     </span>
                 </Label>
-                <Slider type="multiple" bind:value={zoomRange} min={10} max={18} step={1} />
+                <Slider type="multiple" bind:value={$offlineZoomRange} min={10} max={18} step={1} />
             </div>
 
             <div class="flex flex-row justify-between text-sm">

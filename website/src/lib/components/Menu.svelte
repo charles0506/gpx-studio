@@ -15,6 +15,7 @@
         Map,
         Layers2,
         Box,
+        CloudDownload,
         Crosshair,
         Route,
         Milestone,
@@ -92,6 +93,7 @@
         directionMarkers,
         centerOnSelection,
         showSelectedOnly,
+        offlineAutoDownload,
         streetViewSource,
         routing,
     } = settings;
@@ -410,6 +412,9 @@
                         <Route size="16" />{i18n._('menu.show_selected_only')}
                     </Menubar.CheckboxItem>
                     <Menubar.Separator />
+                    <Menubar.CheckboxItem bind:checked={$offlineAutoDownload}>
+                        <CloudDownload size="16" />{i18n._('offline.automatic')}
+                    </Menubar.CheckboxItem>
                     <Menubar.Item inset onclick={() => (offlineOpen = true)}>
                         {i18n._('offline.title')}
                     </Menubar.Item>

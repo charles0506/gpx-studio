@@ -10,6 +10,9 @@
     import RadarControl from '$lib/components/map/radar-control/RadarControl.svelte';
     import ClimbControl from '$lib/components/map/climb-control/ClimbControl.svelte';
     import TrailLayer from '$lib/components/map/trail/TrailLayer.svelte';
+    import OfflineProgress from '$lib/components/OfflineProgress.svelte';
+    // Subscribes on import: fetching tiles for a route as it is picked.
+    import '$lib/offline-auto';
     import ClimbBanner from '$lib/components/map/ClimbBanner.svelte';
     import LayerControl from '$lib/components/map/layer-control/LayerControl.svelte';
     import CoordinatesPopup from '$lib/components/map/CoordinatesPopup.svelte';
@@ -132,6 +135,11 @@
             <TrailLayer />
             <CoordinatesPopup />
             <Toaster richColors />
+            <div
+                class="absolute right-2 bottom-12 z-30 pointer-events-none flex flex-row justify-end"
+            >
+                <OfflineProgress />
+            </div>
             {#if !$treeFileView}
                 <div class="h-10 -translate-y-10 w-full pointer-events-none absolute z-30">
                     <FileList orientation="horizontal" />

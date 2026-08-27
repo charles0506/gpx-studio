@@ -64,7 +64,10 @@
 >
     <div
         class="flex {orientation === 'vertical'
-            ? 'flex-col py-1 pl-1 min-h-screen'
+            ? // The menu bar floats over the top of the map and, on a phone, is
+              // wider than the map: it reaches across the panel and lands on
+              // whatever is at the top of it. Below it, then, on small screens.
+              'flex-col pt-12 md:pt-1 pb-1 pl-1 min-h-screen'
             : 'flex-row'} {className ?? ''}"
         {style}
     >

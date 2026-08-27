@@ -28,6 +28,8 @@
     import { getContext } from 'svelte';
     import { GPXTreeElement, Track, type AnyGPXTreeElement, Waypoint, GPXFile } from 'gpx';
     import { i18n } from '$lib/i18n.svelte';
+    import { closeFile } from '$lib/logic/closed-files';
+    import { X } from '@lucide/svelte';
     import MetadataDialog from '$lib/components/file-list/metadata/MetadataDialog.svelte';
     import { editMetadata } from '$lib/components/file-list/metadata/utils.svelte';
     import StyleDialog from '$lib/components/file-list/style/StyleDialog.svelte';
@@ -208,6 +210,27 @@
                     />
                 {/if}
             </span>
+            {#if orientation === 'horizontal' && item instanceof ListFileItem}
+                <span
+                    role="button"
+                    tabindex="0"
+                    class="shrink-0 ml-1 -mr-0.5 p-0.5 rounded opacity-60 hover:opacity-100 hover:bg-accent"
+                    title={i18n._('menu.close')}
+                    onclick={(event) => {
+                        event.stopPropagation();
+                        closeFile(item.getFileId());
+                    }}
+                    onkeydown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            closeFile(item.getFileId());
+                        }
+                    }}
+                >
+                    <X size="12" />
+                </span>
+            {/if}
         </Button>
     </ContextMenu.Trigger>
     <ContextMenu.Content>

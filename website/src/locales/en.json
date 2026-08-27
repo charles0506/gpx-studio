@@ -79,6 +79,7 @@
             "opacity": "Opacity",
             "width": "Width"
         },
+        "close": "Close (stays in the file tree)",
         "hide": "Hide",
         "unhide": "Unhide",
         "center": "Center",

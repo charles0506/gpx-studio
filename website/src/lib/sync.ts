@@ -11,8 +11,13 @@ const STORAGE_KEY = 'syncPassphrase';
 const SLOT_KEY = 'syncSlot';
 const LABEL_KEY = 'syncSlotLabels';
 
-/** Four independent workspaces, sharing one passphrase. */
-export const slots = ['1', '2', '3', '4'] as const;
+/**
+ * Independent workspaces, sharing one passphrase. The numbered ones hold what
+ * is planned; 'now' holds the route being walked today, so a phone on the
+ * trail downloads one route rather than a library of them.
+ */
+export const slots = ['1', '2', '3', '4', 'now'] as const;
+export const currentSlot: Slot = 'now';
 export type Slot = (typeof slots)[number];
 
 function readStoredPassphrase(): string {
@@ -83,13 +88,17 @@ export type Workspace = {
     updatedAt: string | null;
 };
 
-async function request(method: 'GET' | 'PUT' | 'DELETE', body?: string): Promise<any> {
+async function request(
+    method: 'GET' | 'PUT' | 'DELETE',
+    body?: string,
+    target: Slot = get(slot)
+): Promise<any> {
     const secret = get(passphrase);
     if (!secret) {
         throw new Error('missing passphrase');
     }
 
-    const response = await fetch(`/api/sync?slot=${get(slot)}`, {
+    const response = await fetch(`/api/sync?slot=${target}`, {
         method,
         headers: {
             Authorization: `Bearer ${secret}`,
@@ -123,6 +132,43 @@ export function collectWorkspace(): SyncedFile[] {
 export async function upload(): Promise<{ files: number; updatedAt: string }> {
     const files = collectWorkspace();
     return request('PUT', JSON.stringify({ files }));
+}
+
+/** The files the list has selected, in the order the list shows them. */
+export function collectSelection(): SyncedFile[] {
+    const selected = new Set(
+        get(selection)
+            .getSelected()
+            .map((item: any) => (item.getFileId ? item.getFileId() : undefined))
+            .filter((id: string | undefined): id is string => id !== undefined)
+    );
+
+    const files: SyncedFile[] = [];
+    for (const fileId of get(settings.fileOrder)) {
+        if (!selected.has(fileId)) {
+            continue;
+        }
+        const file = fileStateCollection.getFile(fileId);
+        if (file) {
+            files.push({ name: file.metadata.name ?? fileId, gpx: buildGPX(file, []) });
+        }
+    }
+    return files;
+}
+
+/**
+ * Put what is selected into the walking slot, whichever slot is open. Planning
+ * happens in a numbered workspace with every candidate route in it; what goes
+ * up the hill is one of them, and picking it out on the phone in the rain is
+ * the thing this avoids.
+ */
+export async function sendSelectionToCurrent(): Promise<{ files: number }> {
+    const files = collectSelection();
+    if (files.length === 0) {
+        throw new Error('nothing selected');
+    }
+    await request('PUT', JSON.stringify({ files }), currentSlot);
+    return { files: files.length };
 }
 
 export async function fetchWorkspace(): Promise<Workspace> {

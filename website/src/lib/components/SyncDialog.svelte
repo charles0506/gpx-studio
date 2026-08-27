@@ -3,9 +3,21 @@
     import { Button } from '$lib/components/ui/button';
     import { Input } from '$lib/components/ui/input';
     import { Label } from '$lib/components/ui/label/index.js';
-    import { CloudDownload, CloudUpload, KeyRound, LoaderCircle } from '@lucide/svelte';
+    import { CloudDownload, CloudUpload, KeyRound, LoaderCircle, Send } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
-    import { collectWorkspace, download, passphrase, slot, slotLabels, slots, upload } from '$lib/sync';
+    import {
+        collectSelection,
+        collectWorkspace,
+        currentSlot,
+        download,
+        passphrase,
+        sendSelectionToCurrent,
+        slot,
+        slotLabels,
+        slots,
+        upload,
+    } from '$lib/sync';
+    import { selection } from '$lib/logic/selection';
     import { User } from '@lucide/svelte';
 
     let { open = $bindable(false) }: { open: boolean } = $props();
@@ -15,6 +27,12 @@
     let error: string | undefined = $state(undefined);
 
     let openFiles = $derived(open ? collectWorkspace().length : 0);
+    // Recounted whenever the list selection changes, so the button knows
+    // whether there is anything to send.
+    let selectedFiles = $derived(open && $selection ? collectSelection().length : 0);
+
+    const slotName = (id: string) =>
+        $slotLabels[id] ?? (id === currentSlot ? i18n._('sync.current') : id);
 
     async function run(action: () => Promise<string>) {
         busy = true;
@@ -50,7 +68,7 @@
                             class="grow px-1 text-xs"
                             onclick={() => ($slot = id)}
                         >
-                            {$slotLabels[id] ?? id}
+                            {slotName(id)}
                         </Button>
                     {/each}
                 </div>
@@ -115,6 +133,24 @@
                     {i18n._('sync.download')}
                 </Button>
             </div>
+
+            <Button
+                variant="outline"
+                class="gap-1.5"
+                disabled={busy || !$passphrase || selectedFiles === 0}
+                onclick={() =>
+                    run(async () => {
+                        const result = await sendSelectionToCurrent();
+                        return i18n._('sync.sent').replace('{n}', String(result.files));
+                    })}
+            >
+                {#if busy}
+                    <LoaderCircle size="16" class="animate-spin" />
+                {:else}
+                    <Send size="16" />
+                {/if}
+                {i18n._('sync.send_to_current')}
+            </Button>
 
             <span class="text-xs text-muted-foreground">
                 {i18n._('sync.warning')}

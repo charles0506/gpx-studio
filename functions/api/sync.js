@@ -9,10 +9,14 @@
 // There are no accounts. A single passphrase, held in the SYNC_SECRET
 // environment variable, guards the store — enough for one person syncing their
 // own devices, and nothing more is pretended.
-// Four separate workspaces, picked with ?slot=. They share the passphrase:
-// this is one household, not four tenants, and pretending otherwise would mean
+// Separate workspaces, picked with ?slot=. They share the passphrase: this is
+// one household, not several tenants, and pretending otherwise would mean
 // building accounts.
-const SLOTS = ['1', '2', '3', '4'];
+//
+// 'now' is the one you are walking today. The numbered slots hold everything
+// planned; this one holds the route in front of you, so a phone on the trail
+// downloads one file rather than a library.
+const SLOTS = ['1', '2', '3', '4', 'now'];
 
 function objectKey(request) {
     const slot = new URL(request.url).searchParams.get('slot') ?? '1';

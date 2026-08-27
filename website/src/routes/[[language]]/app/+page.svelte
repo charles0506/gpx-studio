@@ -135,9 +135,7 @@
             <TrailLayer />
             <CoordinatesPopup />
             <Toaster richColors />
-            <div
-                class="absolute right-2 bottom-12 z-30 pointer-events-none flex flex-row justify-end"
-            >
+            <div class="absolute left-0 right-0 bottom-11 z-30 pointer-events-none px-2">
                 <OfflineProgress />
             </div>
             {#if !$treeFileView}

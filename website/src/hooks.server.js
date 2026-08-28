@@ -2,6 +2,11 @@ import { base } from '$app/paths';
 import { defaultLanguage, languages } from '$lib/languages';
 import { getURLForLanguage } from '$lib/utils';
 
+// Where this copy of the app actually lives. The upstream project bakes
+// gpx.studio into every card, which on a fork means a pasted link previews with
+// somebody else's name and somebody else's logo.
+const SITE = 'https://gpx-studio2.pages.dev';
+
 export async function handle({ event, resolve }) {
     const language = event.params.language ?? defaultLanguage;
     const strings = await import(`./locales/${language}.json`);
@@ -29,7 +34,7 @@ export async function handle({ event, resolve }) {
         "@context": "https://schema.org",
         "@type": "WebSite",
         "name": "快到了",
-        "url": "https://gpx.studio"
+        "url": "${SITE}"
     }
     </script>
     <meta name="description" content="${description}" />
@@ -37,15 +42,15 @@ export async function handle({ event, resolve }) {
     <meta property="og:description" content="${description}" />
     <meta name="twitter:title" content="快到了" />
     <meta name="twitter:description" content="${description}" />
-    <meta property="og:image" content="https://gpx.studio${base}/og_logo.png" />
-    <meta property="og:url" content="https://gpx.studio/" />
+    <meta property="og:image" content="${SITE}${base}/og.png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content="${SITE}${path}" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="快到了" />
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:image" content="https://gpx.studio${base}/og_logo.png" />
-    <meta name="twitter:url" content="https://gpx.studio/" />
-    <meta name="twitter:site" content="@gpxstudio" />
-    <meta name="twitter:creator" content="@gpxstudio" />
+    <meta name="twitter:image" content="${SITE}${base}/og.png" />
+    <meta name="twitter:url" content="${SITE}${path}" />
     <link rel="alternate" hreflang="x-default" href="https://gpx.studio${getURLForLanguage('en', path)}" />
     <link rel="manifest" href="${base}/${language}.manifest.webmanifest" />`;
 

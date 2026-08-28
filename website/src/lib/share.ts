@@ -3,6 +3,8 @@ import { parseGPX, type GPXFile } from 'gpx';
 import { fileActions } from '$lib/logic/file-actions';
 import { selection } from '$lib/logic/selection';
 import { applySettings, collectSelection, collectSettings, passphrase } from '$lib/sync';
+import { settings } from '$lib/logic/settings';
+import { renderShareImage, totalsOf } from '$lib/share-image';
 
 /**
  * A bundle of routes and settings behind a link that opens without a
@@ -71,17 +73,38 @@ export async function createShare(includeSettings: boolean): Promise<string> {
         throw new Error('nothing selected');
     }
 
+    const name = routes.map((route) => route.name).join('、');
+    const fileIds = selectedFileIds();
+    // Sent along so the preview card can say how far and how much up without
+    // the crawler having to fetch and measure every track point.
+    const totals = totalsOf(fileIds);
     const id = newId();
     await request(
         'PUT',
         id,
         JSON.stringify({
-            name: routes.map((route) => route.name).join('、'),
+            name,
             routes,
             settings: includeSettings ? collectSettings() : {},
+            // Drawn now, while the routes are open and their statistics are to
+            // hand. The card has to exist before anyone pastes the link.
+            image: renderShareImage(fileIds, name),
+            km: totals.km.toFixed(1),
+            ascent: String(Math.round(totals.ascent)),
         })
     );
     return linkFor(id);
+}
+
+/** The ids of the selected files, in the order the list shows them. */
+function selectedFileIds(): string[] {
+    const selected = new Set(
+        get(selection)
+            .getSelected()
+            .map((item: any) => (item.getFileId ? item.getFileId() : undefined))
+            .filter((id: string | undefined): id is string => id !== undefined)
+    );
+    return get(settings.fileOrder).filter((fileId: string) => selected.has(fileId));
 }
 
 export function linkFor(id: string): string {

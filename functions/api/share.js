@@ -11,6 +11,10 @@
 // yours with something else.
 
 const PREFIX = 'share/';
+// The preview card lives beside the bundle rather than inside it, so that a
+// crawler asking for the picture does not drag every track point along with it.
+const IMAGE_PREFIX = 'shareimg/';
+const MAX_IMAGE_BYTES = 2 * 1024 * 1024;
 // Routes and a page of settings. Well over what a day out weighs.
 const MAX_BYTES = 8 * 1024 * 1024;
 // A share is for a walk that is about to happen, not an archive.
@@ -143,10 +147,31 @@ export async function onRequestPut({ request, env }) {
         return json({ error: 'expected { name, routes: [{ name, gpx }], settings }' }, 400);
     }
 
+    // A data URL for the preview card, decoded here so that what is stored is
+    // an image and can be served as one.
+    let image;
+    if (typeof payload.image === 'string' && payload.image.startsWith('data:image/png;base64,')) {
+        try {
+            const binary = atob(payload.image.slice('data:image/png;base64,'.length));
+            if (binary.length <= MAX_IMAGE_BYTES) {
+                image = new Uint8Array(binary.length);
+                for (let i = 0; i < binary.length; i++) {
+                    image[i] = binary.charCodeAt(i);
+                }
+            }
+        } catch (error) {
+            // A card that will not decode is not a reason to lose the routes.
+            image = undefined;
+        }
+    }
+
     const createdAt = new Date().toISOString();
     const metadata = {
         name: String(payload.name ?? '').slice(0, 200),
         routes: String(payload.routes.length),
+        image: image ? '1' : '',
+        km: String(payload.km ?? '').slice(0, 10),
+        ascent: String(payload.ascent ?? '').slice(0, 10),
         createdAt,
     };
     const stored = JSON.stringify({
@@ -161,11 +186,19 @@ export async function onRequestPut({ request, env }) {
             metadata,
             expirationTtl: TTL_SECONDS,
         });
+        if (image) {
+            await env.SYNC_KV.put(IMAGE_PREFIX + id, image, { expirationTtl: TTL_SECONDS });
+        }
     } else {
         await env.SYNC_BUCKET.put(PREFIX + id, stored, {
             httpMetadata: { contentType: 'application/json; charset=utf-8' },
             customMetadata: metadata,
         });
+        if (image) {
+            await env.SYNC_BUCKET.put(IMAGE_PREFIX + id, image, {
+                httpMetadata: { contentType: 'image/png' },
+            });
+        }
     }
 
     return json({ id, createdAt });
@@ -180,8 +213,10 @@ export async function onRequestDelete({ request, env }) {
 
     if (env.SYNC_KV) {
         await env.SYNC_KV.delete(PREFIX + id);
+        await env.SYNC_KV.delete(IMAGE_PREFIX + id);
     } else {
         await env.SYNC_BUCKET.delete(PREFIX + id);
+        await env.SYNC_BUCKET.delete(IMAGE_PREFIX + id);
     }
     return json({ deleted: true });
 }

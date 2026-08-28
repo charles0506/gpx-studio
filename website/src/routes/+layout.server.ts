@@ -6,9 +6,14 @@ function getModule(language: string | undefined, guide: string) {
     if (guide.includes('/')) {
         [guide, subguide] = guide.split('/');
     }
-    return subguide
-        ? import(`./../lib/docs/${language}/${guide}/${subguide}.mdx`)
-        : import(`./../lib/docs/${language}/${guide}.mdx`);
+    // Guides this build adds are not translated into all thirty-four
+    // languages. A language without one falls back to English rather than
+    // taking the whole help section down with it.
+    const load = (lang: string) =>
+        subguide
+            ? import(`./../lib/docs/${lang}/${guide}/${subguide}.mdx`)
+            : import(`./../lib/docs/${lang}/${guide}.mdx`);
+    return load(language).catch(() => load('en'));
 }
 
 export async function load({ params }) {

@@ -19,9 +19,13 @@ export async function handle({ event, resolve }) {
 
     if (page === 'help' && event.params.guide) {
         const [guide, subguide] = event.params.guide.split('/');
-        const guideModule = subguide
-            ? await import(`./lib/docs/${language}/${guide}/${subguide}.mdx`)
-            : await import(`./lib/docs/${language}/${guide}.mdx`);
+        // English stands in for a guide this build added and has not
+        // translated; a missing one must not fail the page.
+        const loadGuide = (lang) =>
+            subguide
+                ? import(`./lib/docs/${lang}/${guide}/${subguide}.mdx`)
+                : import(`./lib/docs/${lang}/${guide}.mdx`);
+        const guideModule = await loadGuide(language).catch(() => loadGuide('en'));
         title = `${title} | ${guideModule.metadata.title}`;
     }
 

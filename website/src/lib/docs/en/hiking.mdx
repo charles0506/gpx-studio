@@ -1,0 +1,133 @@
+---
+title: On the hill
+---
+
+# { title }
+
+The hard part of climbing is not being tired. It is not knowing how much is left.
+
+One bend after another, no summit in sight, no idea whether what remains is thirty metres or three hundred — and that is where you start wondering whether you are simply not fit enough. Usually you are. You are just short of information.
+
+So open the map while you are climbing. The climb screen tells you how much of this climb is left, how far, and how steep the ground under your foot is right now. "40 metres to go" and a bend you cannot see the top of are two completely different experiences: the first makes you push on, the second makes you sit down.
+
+Being slow is not the problem. Not knowing how much is left is the problem.
+
+This page covers what this build adds on top of gpx.studio: offline maps, the climb screen, the recorded trail, the route shelf, workspace sync, and share links.
+
+## Offline tiles
+
+### It uses mobile data
+
+**Fetching is automatic, and it spends your data allowance.** A second and a half after you pick a route in the file list, the map along it starts coming down in the background. A thin progress bar sits above the file tabs while it does, with a done/total count beside it.
+
+Roughly what it costs, at the default zoom range of 13–18: **about 1.5 to 2 MB per kilometre**.
+
+| Route | One layer | Two layers on |
+| --- | --- | --- |
+| 5 km | ~8 MB | ~16 MB |
+| 10 km | ~17 MB | ~34 MB |
+| 20 km | ~34 MB | ~68 MB |
+
+More layers, more data — a basemap plus a contour overlay is twice the figure. For the exact number before you commit, open **View → Offline tiles**: it works out the megabytes still to fetch for the route you have selected.
+
+### When it stands down
+
+- You are already offline
+- The system has data saving turned on (Android's Data Saver, iOS Low Data Mode)
+- The tiles for this route were fetched before — it asks the cache first and fetches only what is missing
+
+Tap through your routes on wi-fi before you leave and the hill costs you nothing.
+
+### Zoom levels
+
+The default range is 13 to 18, and **View → Offline tiles** moves it anywhere between 10 and 20.
+
+Higher is finer. Zoom 18 is a tile about 140 metres across — individual switchbacks; zoom 13 is the shape of the range. **Offline, you can only see the levels you fetched:** stop at 16 and zooming to 18 on the hill gives you a blank screen.
+
+One more level down multiplies the tiles by about four in principle, but only the corridor along the route is fetched (a three-by-three block around each point), so in practice it is closer to double.
+
+### How much fits
+
+Twenty thousand tiles, which is somewhere between 500 and 800 MB depending on the layers. **Past that the oldest are dropped** — not a hard stop, but tiles start pushing each other out, so an over-wide zoom range costs you the maps you already had.
+
+### Closing a route deletes its maps
+
+Remove a route from the file tree and the tiles that belonged only to it go with it. Tiles shared with another open route stay.
+
+## The climb screen
+
+### Three positions
+
+The climb button in the map's control column cycles:
+
+1. **Off**
+2. **While following** — appears only when a GPS fix is moving
+3. **Always on** — also when you are planning at home
+
+### What counts as a climb
+
+Not every rise. The gentle approach is discounted first, and what is left is the climb:
+
+- **60 metres of gain** to be named at all
+- Ground under 3% up, or 10% down, counts as approach and is not folded in
+- A dip of less than 25 metres in the middle does not split one climb into two
+- **Except that anything over 40% is shown however short it is**, given 10 metres of gain
+
+That second rule is there for the old trails. A path that drifts uphill for ten kilometres and then rears up at the end averages 2% counted whole — a number that describes neither half of it. Discount the approach and the wall at the end stands on its own.
+
+### Colours
+
+Banded by gradient at 0, 4, 7, 10, 15, 25 and 35%. The warm scale is for climbing, the cold one for descending. Everything past 35% is the same darkest band, because by then the difference has stopped mattering.
+
+Gradient is measured **over the hundred metres around you**, not between neighbouring points. Point-to-point is noise — a GPS wobble of two metres reads as hundreds of percent.
+
+### Moving along the profile
+
+- **Arrow keys** move the cursor
+- **Dragging** the profile with a finger does the same
+- What is shown is always the gradient **where you are**, never a segment average
+
+### Off route
+
+More than 60 metres from the line and your position stops being marked. Better to say nothing than to point at the wrong place.
+
+## The recorded trail
+
+With a live fix, the ground you have covered is drawn on the map. A point every five metres, so standing still does not pile up noise.
+
+## The passphrase
+
+Sync, the route shelf and creating share links all need it. It is the `SYNC_SECRET` you set on Cloudflare, kept in the browser, and it has to be entered again on a new device.
+
+**The passphrase is every permission there is** — it can delete everything you have stored. Do not hand it out. To give somebody a route, give them a share link.
+
+## Workspace sync
+
+Sync moves the whole desk: everything currently open goes up, another device pulls it down, and both show the same set. There are four numbered workspaces plus one called "current route".
+
+They divide like this: plan in a numbered workspace with every candidate in it, then send the one you are actually walking to "current route". On the hill you open that, and there is one line on the map instead of thirty to pick through in the rain.
+
+Tick "sync settings too" and the basemap, units and climb-screen setting travel with the routes.
+
+## The route shelf
+
+Different from sync: the shelf keeps routes **one at a time**. Open the one you want and the rest stay in the cloud.
+
+It sits under the file tree. Select routes and press the upload button to shelve them; tap a name to open it. **Opening adds to what you have, it does not replace it.** Shelving a route under a name already there replaces that one.
+
+## Share links
+
+The top item in the toolbar, above the pencil.
+
+Select routes, press "create a link", hand the link over. **The recipient needs no passphrase** — opening it brings the routes in. Pasted into a chat, the link previews with the route's name, its distance and ascent, and a drawing of the route itself.
+
+Worth knowing:
+
+- **Settings are not applied on their own.** The recipient gets a button offering them; nothing changes unless they press it. A link should not quietly rewrite somebody's basemap and units.
+- **The link holds a copy.** Deleting it later stops new people opening it; it does not take the walk out from under someone already on it.
+- **Links expire after 90 days.**
+- Tapping a link you have already made puts it back in the box at the top, and copies it.
+
+## Updates
+
+This is a website, not an app to install. When there is a new version it asks whether to reload. Offline maps survive it — the maps and the app are kept in separate stores.

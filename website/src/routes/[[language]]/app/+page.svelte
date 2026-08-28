@@ -54,6 +54,46 @@
         bottomPanelOrientation === 'vertical' ? Math.max($bottomPanelSize, 240) : $bottomPanelSize
     );
 
+    // Fetching the share and showing the result are reported apart. Wrapped
+    // together, a failure anywhere in either read as "the link would not open",
+    // which sent us looking at the wrong half. The console gets the whole error;
+    // the toast gets enough to tell the two apart from a screenshot.
+    async function importShare(share: string) {
+        let opened;
+        try {
+            opened = await openShare(share);
+        } catch (e) {
+            console.error('[share] fetching the share failed', e);
+            toast.error(`${i18n._('share.failed')}${String((e as Error)?.message ?? e)}`);
+            return;
+        }
+
+        try {
+            // Drop the parameter so a reload does not add the same routes a
+            // second time.
+            const url = new URL(window.location.href);
+            url.searchParams.delete('share');
+            window.history.replaceState({}, '', url);
+
+            const count = Object.keys(opened.settings).length;
+            toast.success(`${opened.routes} ${i18n._('share.opened')}`, {
+                duration: count > 0 ? 15000 : 5000,
+                action:
+                    count > 0
+                        ? {
+                              label: i18n._('share.apply_settings'),
+                              onClick: () => acceptSettings(opened.settings),
+                          }
+                        : undefined,
+            });
+        } catch (e) {
+            // The routes are already in by this point, so this is cosmetic:
+            // say so rather than claiming the link did not open.
+            console.error('[share] the routes arrived but the notice failed', e);
+            toast.success(`${opened.routes} ${i18n._('share.opened')}`);
+        }
+    }
+
     onMount(async () => {
         settings.connectToDatabase(db);
         fileStateCollection.connectToDatabase(db).then(() => {
@@ -81,29 +121,7 @@
             // basemap and the units of somebody who only wanted the walk.
             const share = page.url.searchParams.get('share');
             if (share) {
-                openShare(share)
-                    .then(({ routes, settings: shared }) => {
-                        // Drop the parameter so a reload does not add the same
-                        // routes a second time.
-                        const url = new URL(window.location.href);
-                        url.searchParams.delete('share');
-                        window.history.replaceState({}, '', url);
-
-                        const count = Object.keys(shared).length;
-                        toast.success(`${routes} ${i18n._('share.opened')}`, {
-                            duration: count > 0 ? 15000 : 5000,
-                            action:
-                                count > 0
-                                    ? {
-                                          label: i18n._('share.apply_settings'),
-                                          onClick: () => acceptSettings(shared),
-                                      }
-                                    : undefined,
-                        });
-                    })
-                    .catch((e) =>
-                        toast.error(`${i18n._('share.failed')}${String(e?.message ?? e)}`)
-                    );
+                void importShare(share);
             }
         });
     });

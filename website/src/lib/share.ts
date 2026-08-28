@@ -1,6 +1,7 @@
 import { get } from 'svelte/store';
 import { parseGPX, type GPXFile } from 'gpx';
 import { fileActions } from '$lib/logic/file-actions';
+import { boundsManager } from '$lib/logic/bounds';
 import { selection } from '$lib/logic/selection';
 import { applySettings, collectSelection, collectSettings, passphrase } from '$lib/sync';
 import { settings } from '$lib/logic/settings';
@@ -149,6 +150,9 @@ export async function openShare(id: string): Promise<OpenedShare> {
     if (parsed.length > 0) {
         const ids = fileActions.addMultiple(parsed);
         selection.selectFileWhenLoaded(ids[0]);
+        // Opening a file from disk moves the map to it; arriving by link should
+        // not leave you looking at wherever you happened to be.
+        boundsManager.fitBoundsOnLoad(ids);
     }
 
     return { routes: parsed.length, settings: data.settings ?? {} };

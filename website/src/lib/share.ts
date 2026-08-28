@@ -67,7 +67,9 @@ export async function listShares(): Promise<ShareEntry[]> {
  * Bundle up what is selected, with the settings that make it look the way it
  * looks here, and return the link to hand over.
  */
-export async function createShare(includeSettings: boolean): Promise<string> {
+export async function createShare(
+    includeSettings: boolean
+): Promise<{ link: string; entry: ShareEntry }> {
     const routes = collectSelection();
     if (routes.length === 0) {
         throw new Error('nothing selected');
@@ -79,7 +81,7 @@ export async function createShare(includeSettings: boolean): Promise<string> {
     // the crawler having to fetch and measure every track point.
     const totals = totalsOf(fileIds);
     const id = newId();
-    await request(
+    const { createdAt } = await request(
         'PUT',
         id,
         JSON.stringify({
@@ -93,7 +95,12 @@ export async function createShare(includeSettings: boolean): Promise<string> {
             ascent: String(Math.round(totals.ascent)),
         })
     );
-    return linkFor(id);
+    // Handed back rather than left to be discovered in the next listing: that
+    // listing is eventually consistent and would not have it yet.
+    return {
+        link: linkFor(id),
+        entry: { id, name, routes: String(routes.length), createdAt },
+    };
 }
 
 /** The ids of the selected files, in the order the list shows them. */

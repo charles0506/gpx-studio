@@ -3,7 +3,7 @@
     import { Input } from '$lib/components/ui/input';
     import { Label } from '$lib/components/ui/label/index.js';
     import { Checkbox } from '$lib/components/ui/checkbox';
-    import { Copy, KeyRound, Link, LoaderCircle, Trash2 } from '@lucide/svelte';
+    import { Copy, KeyRound, Link, LoaderCircle, RefreshCw, Trash2 } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { passphrase, syncSettings } from '$lib/sync';
     import { createShare, linkFor, listShares, removeShare, type ShareEntry } from '$lib/share';
@@ -20,12 +20,19 @@
 
     let hasSelection = $derived($selection ? $selection.size > 0 : false);
 
-    async function run(action: () => Promise<void>) {
+    // The listing is eventually consistent and cached at the edge for up to a
+    // minute, so reading it back after a change shows the state from before the
+    // change — a deleted share reappears, and it looks like nothing happened.
+    // What the store holds is decided here instead, and the listing is only
+    // read when there is nothing local to go on.
+    async function run(action: () => Promise<void>, reload = false) {
         busy = true;
         error = undefined;
         try {
             await action();
-            shares = await listShares();
+            if (reload) {
+                shares = await listShares();
+            }
         } catch (e) {
             error = e instanceof Error ? e.message : String(e);
         } finally {
@@ -36,7 +43,7 @@
     $effect(() => {
         if ($passphrase && !loaded && !busy) {
             loaded = true;
-            void run(async () => {});
+            void run(async () => {}, true);
         }
     });
 
@@ -80,7 +87,9 @@
             disabled={busy || !hasSelection}
             onclick={() =>
                 run(async () => {
-                    link = await createShare($syncSettings);
+                    const created = await createShare($syncSettings);
+                    link = created.link;
+                    shares = [created.entry, ...shares];
                 })}
         >
             {#if busy}
@@ -104,6 +113,18 @@
         {/if}
 
         {#if shares.length > 0}
+            <div class="flex flex-row items-center gap-1 text-xs text-muted-foreground">
+                <span class="grow">{i18n._('toolbar.share.existing')}</span>
+                <Button
+                    variant="ghost"
+                    class="w-6 h-6 p-0"
+                    disabled={busy}
+                    title={i18n._('toolbar.share.refresh')}
+                    onclick={() => run(async () => {}, true)}
+                >
+                    <RefreshCw size="12" />
+                </Button>
+            </div>
             <div class="flex flex-col gap-1 max-h-48 overflow-y-auto">
                 {#each shares as share (share.id)}
                     <div class="flex flex-row items-center gap-1 border rounded-md px-2 py-1">
@@ -123,7 +144,11 @@
                             variant="ghost"
                             class="w-7 h-7 p-0 shrink-0"
                             disabled={busy}
-                            onclick={() => run(async () => await removeShare(share.id))}
+                            onclick={() =>
+                                run(async () => {
+                                    await removeShare(share.id);
+                                    shares = shares.filter((other) => other.id !== share.id);
+                                })}
                         >
                             <Trash2 size="14" />
                         </Button>

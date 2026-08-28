@@ -255,6 +255,8 @@
             "link": "Link",
             "longitude": "Longitude",
             "latitude": "Latitude",
+            "existing": "Links you have made",
+            "refresh": "Re-read the list",
             "create": "Create point of interest",
             "add": "Add point of interest to file",
             "help": "Fill in the form to create a new point of interest, or click on an existing one to edit it. Click on the map to fill the coordinates, or drag points of interest to move them.",

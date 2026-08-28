@@ -108,7 +108,13 @@
                     class="w-6 h-6 p-0 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100"
                     disabled={busy}
                     title={i18n._('library.remove')}
-                    onclick={() => run(async () => await removeRoute(route.id))}
+                    onclick={() =>
+                        run(async () => {
+                            await removeRoute(route.id);
+                            // Dropped here rather than by re-reading: the listing is
+                            // eventually consistent, so it would hand the route back.
+                            routes = routes.filter((other) => other.id !== route.id);
+                        }, false)}
                 >
                     <Trash2 size="12" />
                 </Button>

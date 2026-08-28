@@ -139,6 +139,41 @@ async function handleTile(request: Request): Promise<Response> {
     }
 }
 
+// The page itself, as opposed to the things it loads.
+//
+// The HTML names the content-hashed scripts to load, so a cached page from
+// before a deploy asks for scripts that no longer exist, and the app comes up
+// with half its modules missing. Served from the network first, the page always
+// matches what is deployed; the cached copy is there for when there is no
+// network, which on a hill is often.
+//
+// A page carrying a query is not cached at all: every shared link would
+// otherwise leave its own copy of the whole page behind.
+async function handlePage(request: Request, url: URL): Promise<Response> {
+    const cache = await caches.open(APP_CACHE);
+    try {
+        const response = await fetch(request);
+        if (response.ok && url.search === '') {
+            try {
+                await cache.put(request, response.clone());
+            } catch {
+                // Out of room. The response itself is still good.
+            }
+        }
+        return response;
+    } catch (error) {
+        const cached =
+            (await cache.match(request)) ??
+            // Offline on a shared link: the page without its query is the same
+            // page, and the app reads the query from the address bar anyway.
+            (url.search === '' ? undefined : await cache.match(url.pathname));
+        if (cached) {
+            return cached;
+        }
+        throw error;
+    }
+}
+
 // The app shell: the build output is content-hashed, so a hit is always current.
 // Anything else is fetched first and falls back to the cache when offline.
 async function handleAppAsset(request: Request, url: URL): Promise<Response> {
@@ -190,6 +225,10 @@ sw.addEventListener('fetch', (event) => {
         // the radar's cache-buster would fill the cache with a fresh two
         // megabytes every ninety seconds, never to be evicted.
         if (url.pathname.startsWith('/api/')) {
+            return;
+        }
+        if (request.mode === 'navigate') {
+            event.respondWith(handlePage(request, url));
             return;
         }
         event.respondWith(handleAppAsset(request, url));

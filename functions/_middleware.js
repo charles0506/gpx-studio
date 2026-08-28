@@ -19,12 +19,26 @@ function escapeAttribute(text) {
         .replace(/"/g, '&quot;');
 }
 
-/** The name and route count, without dragging the whole bundle out of storage. */
+/**
+ * What the card needs to say, without dragging the whole bundle out of storage.
+ *
+ * Read through the key rather than through a listing: listings are eventually
+ * consistent and cached at the edge for up to a minute, so a link pasted
+ * straight after it was made looked to this like a share that did not exist,
+ * and the page went out with no card on it at all — which is the one moment
+ * a card matters. Asking for the key itself is read-your-writes.
+ *
+ * The body is asked for as a stream and never read, so the metadata arrives
+ * without the routes coming with it.
+ */
 async function summaryOf(env, id) {
     if (env.SYNC_KV) {
-        const listed = await env.SYNC_KV.list({ prefix: PREFIX + id, limit: 1 });
-        const key = listed.keys.find((candidate) => candidate.name === PREFIX + id);
-        return key ? (key.metadata ?? {}) : undefined;
+        const { value, metadata } = await env.SYNC_KV.getWithMetadata(PREFIX + id, 'stream');
+        if (value === null) {
+            return undefined;
+        }
+        value.cancel?.();
+        return metadata ?? {};
     }
     if (env.SYNC_BUCKET) {
         const object = await env.SYNC_BUCKET.head(PREFIX + id);
@@ -74,9 +88,11 @@ export async function onRequest({ request, next, env }) {
         `<meta property="og:url" content="${escapeAttribute(url.href)}">`,
         `<meta name="description" content="${escapeAttribute(description)}">`,
     ];
-    // Only claim a picture when there is one: a card pointing at a missing
-    // image looks more broken than a card with no image at all.
-    if (summary.image === '1') {
+    // Claimed unless the share is known not to have one. A share written before
+    // the cards existed says so; anything else gets the tag, and a card whose
+    // picture 404s falls back to a card with no picture — which is where it
+    // would have been anyway.
+    if (summary.image !== '') {
         tags.push(
             `<meta property="og:image" content="${escapeAttribute(image)}">`,
             `<meta property="og:image:type" content="image/png">`,

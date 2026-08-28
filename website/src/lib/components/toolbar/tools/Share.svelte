@@ -47,6 +47,15 @@
         }
     });
 
+    // Tapping a share that already exists puts its link in the box above rather
+    // than only on the clipboard: a copy that leaves nothing on screen is
+    // indistinguishable from a tap that did nothing, which on a phone is most
+    // of the time.
+    function show(id: string) {
+        link = linkFor(id);
+        void copy(link);
+    }
+
     async function copy(text: string) {
         try {
             await navigator.clipboard.writeText(text);
@@ -131,7 +140,7 @@
                         <button
                             type="button"
                             class="grow min-w-0 text-left"
-                            onclick={() => copy(linkFor(share.id))}
+                            onclick={() => show(share.id)}
                         >
                             <span class="block truncate text-xs">{share.name || share.id}</span>
                             <span class="block text-[10px] text-muted-foreground">

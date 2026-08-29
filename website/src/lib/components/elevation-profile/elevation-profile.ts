@@ -26,7 +26,7 @@ import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/col
 import { departureTime, routeRainfall } from '$lib/weather';
 import { livePosition, OFF_ROUTE_METERS, progressAlongRoute } from '$lib/live-position';
 import { climbCursorKm } from '$lib/climb-view';
-import { findClimbsAndDescents, gradientColour } from '$lib/climbs';
+import { climbAt, findClimbsAndDescents, gradientColour } from '$lib/climbs';
 import { cumulativeHikingTime, secondsAt, type HikingTimePoint } from '$lib/hiking-time';
 
 const { distanceUnits, velocityUnits, temperatureUnits } = settings;
@@ -412,6 +412,31 @@ export class ElevationProfile {
 
         let startIndex = 0;
         let endIndex = 0;
+        // The same as getIndex, from a position rather than an event: the
+        // view scrolling under a finger that has not moved needs to know what
+        // is under it now, and there is no new event to ask.
+        const getIndexAt = (offsetX: number, offsetY: number) => {
+            const rect = this._canvas.getBoundingClientRect();
+            return getIndex({
+                x: rect.left + offsetX,
+                y: rect.top + offsetY,
+                offsetX,
+                offsetY,
+                clientX: rect.left + offsetX,
+                clientY: rect.top + offsetY,
+            } as unknown as PointerEvent);
+        };
+
+        // Where along the route a data index falls.
+        const kmAt = (index: number | undefined) => {
+            const data = this._chart?.data.datasets[0]?.data as any[] | undefined;
+            if (!data || index === undefined) {
+                return undefined;
+            }
+            const point = data.find((candidate) => candidate?.index === index) ?? data[index];
+            return typeof point?.km === 'number' ? (point.km as number) : undefined;
+        };
+
         const getIndex = (evt: PointerEvent) => {
             if (!this._chart) {
                 return undefined;
@@ -445,12 +470,72 @@ export class ElevationProfile {
         };
 
         let dragStarted = false;
-        // Which fingers are down. One finger reads the profile; two are a
-        // pinch, and the zoom plugin owns those — scrubbing to wherever the
-        // second finger landed while the first is spreading away from it is
-        // not a reading, it is a jump.
-        const fingers = new Set<number>();
+        // Which fingers are down, and where. One finger reads the profile;
+        // two are a pinch or a drag, and scrubbing to wherever the second
+        // finger landed while the first is moving away from it is not a
+        // reading, it is a jump.
+        const fingers = new Map<number, number>();
         let lastTap = 0;
+
+        // The midpoint between two fingers, so that moving them together
+        // slides the view. The zoom plugin scales about a point but never
+        // translates, so without this a zoomed-in profile could only be
+        // moved along by zooming out and back in somewhere else.
+        let lastMidpoint: number | undefined = undefined;
+        const midpoint = () => {
+            const xs = [...fingers.values()];
+            return xs.length === 2 ? (xs[0] + xs[1]) / 2 : undefined;
+        };
+
+        // Reading with one finger runs out of chart at the edge. Rather than
+        // stopping there the view follows: hold the finger near the edge and
+        // the profile scrolls under it, so a long route can be read end to
+        // end without ever letting go.
+        const EDGE = 36;
+        const MAX_EDGE_SPEED = 9;
+        let edgeSpeed = 0;
+        let edgeFrame: number | undefined = undefined;
+        let heldAt: { x: number; y: number } | undefined = undefined;
+        const stopEdgeScroll = () => {
+            if (edgeFrame !== undefined) {
+                cancelAnimationFrame(edgeFrame);
+                edgeFrame = undefined;
+            }
+            edgeSpeed = 0;
+        };
+        const zoomedIn = () => (this._chart?.getZoomLevel() ?? 1) > 1.01;
+        const edgeStep = () => {
+            edgeFrame = undefined;
+            if (edgeSpeed === 0 || !this._chart || !heldAt) {
+                return;
+            }
+            (this._chart as any).pan({ x: -edgeSpeed }, undefined, 'default');
+            // The view moved under a finger that did not, so the point being
+            // read is a different one now.
+            moveCursorTo(getIndexAt(heldAt.x, heldAt.y));
+            edgeFrame = requestAnimationFrame(edgeStep);
+        };
+        const updateEdgeScroll = (evt: PointerEvent) => {
+            const area = this._chart?.chartArea;
+            if (!area || !zoomedIn()) {
+                stopEdgeScroll();
+                return;
+            }
+            const x = evt.offsetX;
+            const past =
+                x < area.left + EDGE
+                    ? -(area.left + EDGE - x)
+                    : x > area.right - EDGE
+                      ? x - (area.right - EDGE)
+                      : 0;
+            edgeSpeed = Math.sign(past) * Math.min(MAX_EDGE_SPEED, Math.abs(past) / 3);
+            heldAt = { x: evt.offsetX, y: evt.offsetY };
+            if (edgeSpeed !== 0 && edgeFrame === undefined) {
+                edgeFrame = requestAnimationFrame(edgeStep);
+            } else if (edgeSpeed === 0) {
+                stopEdgeScroll();
+            }
+        };
         // A finger reads the profile by sliding along it, so on a touch screen
         // that gesture moves the cursor rather than selecting a range: sliding
         // is the only way to scrub, and a range can still be taken with the
@@ -458,9 +543,12 @@ export class ElevationProfile {
         // from one is a finger already down and needs no flag to remember it.
         const onMouseDown = (evt: PointerEvent) => {
             if (evt.pointerType === 'touch') {
-                fingers.add(evt.pointerId);
+                fingers.set(evt.pointerId, evt.clientX);
                 if (fingers.size === 1) {
                     moveCursorTo(getIndex(evt));
+                } else {
+                    stopEdgeScroll();
+                    lastMidpoint = midpoint();
                 }
                 return;
             }
@@ -474,8 +562,18 @@ export class ElevationProfile {
         };
         const onMouseMove = (evt: PointerEvent) => {
             if (evt.pointerType === 'touch') {
+                if (fingers.has(evt.pointerId)) {
+                    fingers.set(evt.pointerId, evt.clientX);
+                }
                 if (fingers.size === 1) {
                     moveCursorTo(getIndex(evt));
+                    updateEdgeScroll(evt);
+                } else if (fingers.size === 2) {
+                    const mid = midpoint();
+                    if (mid !== undefined && lastMidpoint !== undefined && this._chart) {
+                        (this._chart as any).pan({ x: mid - lastMidpoint }, undefined, 'default');
+                    }
+                    lastMidpoint = mid;
                 }
                 return;
             }
@@ -502,16 +600,20 @@ export class ElevationProfile {
             if (evt.pointerType === 'touch') {
                 const alone = fingers.size === 1;
                 fingers.delete(evt.pointerId);
+                stopEdgeScroll();
+                lastMidpoint = midpoint();
                 if (!alone) {
                     return;
                 }
-                // Two taps in quick succession put the whole route back on
-                // screen. Pinching back out works too, but it takes as many
-                // gestures as it took to get in.
+                // Two taps in quick succession fill the view with the climb
+                // under the finger, and put the whole route back when there
+                // is already one filling it. Reading the next climb is then
+                // two taps on the next climb, rather than pinching all the
+                // way out and all the way back in somewhere else.
                 const now = Date.now();
                 if (now - lastTap < 300) {
-                    this._chart?.resetZoom();
                     lastTap = 0;
+                    this.zoomAround(kmAt(getIndex(evt)));
                     return;
                 }
                 lastTap = now;
@@ -551,11 +653,17 @@ export class ElevationProfile {
         // the set stops every later touch from reading as a single one.
         // The canvas sees the event first either way, so the handler above
         // still gets its turn.
-        this._onPointerGone = (evt: PointerEvent) => fingers.delete(evt.pointerId);
+        this._onPointerGone = (evt: PointerEvent) => {
+            fingers.delete(evt.pointerId);
+            stopEdgeScroll();
+            lastMidpoint = midpoint();
+        };
         window.addEventListener('pointerup', this._onPointerGone);
         window.addEventListener('pointercancel', this._onPointerGone);
-        // The same reset for a mouse.
-        this._canvas.addEventListener('dblclick', () => this._chart?.resetZoom());
+        // The same for a mouse.
+        this._canvas.addEventListener('dblclick', (evt: MouseEvent) =>
+            this.zoomAround(kmAt(getIndex(evt as unknown as PointerEvent)))
+        );
 
         // Reading a profile with a mouse is a matter of a few metres either
         // way, and a hand on a trackpad cannot hold that still. With the
@@ -767,6 +875,45 @@ export class ElevationProfile {
         return `${String(at.getHours()).padStart(2, '0')}:${String(at.getMinutes()).padStart(2, '0')}`;
     }
 
+    /**
+     * Fill the view with the climb at a point on the route, or put the whole
+     * route back when something already fills it.
+     *
+     * Pinching is fine for looking closer at where you already are, and
+     * miserable for comparing one climb with the next: out all the way, in
+     * all the way, twice per climb. The segments are already known — they are
+     * drawn along the foot of the chart — so a climb can simply be asked for.
+     */
+    zoomAround(km: number | undefined) {
+        if (!this._chart) {
+            return;
+        }
+        if ((this._chart.getZoomLevel() ?? 1) > 1.01) {
+            this._chart.resetZoom();
+            return;
+        }
+        if (km === undefined) {
+            return;
+        }
+
+        const segment = climbAt(findClimbsAndDescents(get(this._gpxStatistics)), km);
+        // Away from any climb, a kilometre either side is a reasonable guess
+        // at what somebody pointing at flat ground wants to see.
+        const [from, to] = segment ? [segment.startKm, segment.endKm] : [km - 1, km + 1];
+        // A little air, so the foot and the top of the climb are not pressed
+        // against the edges of the chart.
+        const margin = Math.max((to - from) * 0.06, 0.02);
+        const units = get(distanceUnits);
+
+        (this._chart as any).zoomScale(
+            'x',
+            {
+                min: getConvertedDistance(Math.max(0, from - margin), units),
+                max: getConvertedDistance(to + margin, units),
+            },
+            'default'
+        );
+    }
     // Each climb and each descent gets a band along the foot of the chart,
     // coloured by how steep it is — the same read as a ClimbPro screen, in the
     // place the profile already occupies. Descents are in the cold half of the

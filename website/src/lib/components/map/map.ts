@@ -185,7 +185,11 @@ export class MapLibreGLMap {
             geolocateControl.on('trackuserlocationend', stopTracking);
             geolocateControl.on('error', stopTracking);
 
-            map.addControl(geolocateControl);
+            // Bottom right, not up with the zoom buttons. It is the one
+            // control reached while walking, often one-handed and often with
+            // the other hand holding something, and the top corner of a phone
+            // is the far end of a thumb.
+            map.addControl(geolocateControl, 'bottom-right');
 
             // Somebody who left the app following them is still walking when
             // they open it again — at a junction, with cold hands, and the

@@ -86,6 +86,7 @@ export class ElevationProfile {
     private _cursorIndex = 0;
     private _pointerOver = false;
     private _onKeyDown: ((event: KeyboardEvent) => void) | null = null;
+    private _onPointerGone: ((event: PointerEvent) => void) | null = null;
     private _canvas: HTMLCanvasElement;
     private _overlay: HTMLCanvasElement;
     private _dragging = false;
@@ -305,7 +306,17 @@ export class ElevationProfile {
                         enabled: true,
                         mode: 'x',
                         modifierKey: 'shift',
-                        onPanStart: () => {
+                        // The modifier is only consulted for a mouse: left to
+                        // itself the gesture library pans on any one-finger
+                        // drag, which is the same drag that reads the profile.
+                        // Unzoomed it went unnoticed because there was nothing
+                        // to pan; zoomed in it fights the cursor. So touch does
+                        // not pan — one finger reads, two pinch, and a pinch
+                        // carries the view along with it.
+                        onPanStart: ({ event }: { event?: { pointerType?: string } }) => {
+                            if (event?.pointerType === 'touch') {
+                                return false;
+                            }
                             this._panning = true;
                             this._slicedGPXStatistics.set(undefined);
                             return true;
@@ -316,6 +327,12 @@ export class ElevationProfile {
                     },
                     zoom: {
                         wheel: {
+                            enabled: true,
+                        },
+                        // Two fingers spread apart is how every map on the
+                        // phone zooms, and until now the profile was the one
+                        // thing on the screen that would not.
+                        pinch: {
                             enabled: true,
                         },
                         mode: 'x',
@@ -428,6 +445,12 @@ export class ElevationProfile {
         };
 
         let dragStarted = false;
+        // Which fingers are down. One finger reads the profile; two are a
+        // pinch, and the zoom plugin owns those — scrubbing to wherever the
+        // second finger landed while the first is spreading away from it is
+        // not a reading, it is a jump.
+        const fingers = new Set<number>();
+        let lastTap = 0;
         // A finger reads the profile by sliding along it, so on a touch screen
         // that gesture moves the cursor rather than selecting a range: sliding
         // is the only way to scrub, and a range can still be taken with the
@@ -435,7 +458,10 @@ export class ElevationProfile {
         // from one is a finger already down and needs no flag to remember it.
         const onMouseDown = (evt: PointerEvent) => {
             if (evt.pointerType === 'touch') {
-                moveCursorTo(getIndex(evt));
+                fingers.add(evt.pointerId);
+                if (fingers.size === 1) {
+                    moveCursorTo(getIndex(evt));
+                }
                 return;
             }
             if (evt.shiftKey) {
@@ -448,7 +474,9 @@ export class ElevationProfile {
         };
         const onMouseMove = (evt: PointerEvent) => {
             if (evt.pointerType === 'touch') {
-                moveCursorTo(getIndex(evt));
+                if (fingers.size === 1) {
+                    moveCursorTo(getIndex(evt));
+                }
                 return;
             }
             if (dragStarted) {
@@ -472,6 +500,21 @@ export class ElevationProfile {
         };
         const onMouseUp = (evt: PointerEvent) => {
             if (evt.pointerType === 'touch') {
+                const alone = fingers.size === 1;
+                fingers.delete(evt.pointerId);
+                if (!alone) {
+                    return;
+                }
+                // Two taps in quick succession put the whole route back on
+                // screen. Pinching back out works too, but it takes as many
+                // gestures as it took to get in.
+                const now = Date.now();
+                if (now - lastTap < 300) {
+                    this._chart?.resetZoom();
+                    lastTap = 0;
+                    return;
+                }
+                lastTap = now;
                 moveCursorTo(getIndex(evt));
                 return;
             }
@@ -497,11 +540,22 @@ export class ElevationProfile {
             }
         };
         // Otherwise the browser takes the slide as a scroll and the cursor
-        // stops halfway. Nothing here uses touch for panning or zooming.
+        // stops halfway. The zoom plugin needs it off for pinching as well.
         this._canvas.style.touchAction = 'none';
         this._canvas.addEventListener('pointerdown', onMouseDown);
         this._canvas.addEventListener('pointermove', onMouseMove);
         this._canvas.addEventListener('pointerup', onMouseUp);
+        // Draining the set is done on the window, not the canvas. A finger
+        // lifted past the edge of the chart, or a gesture the browser takes
+        // over, ends somewhere else entirely — and a finger left behind in
+        // the set stops every later touch from reading as a single one.
+        // The canvas sees the event first either way, so the handler above
+        // still gets its turn.
+        this._onPointerGone = (evt: PointerEvent) => fingers.delete(evt.pointerId);
+        window.addEventListener('pointerup', this._onPointerGone);
+        window.addEventListener('pointercancel', this._onPointerGone);
+        // The same reset for a mouse.
+        this._canvas.addEventListener('dblclick', () => this._chart?.resetZoom());
 
         // Reading a profile with a mouse is a matter of a few metres either
         // way, and a hand on a trackpad cannot hold that still. With the
@@ -914,6 +968,11 @@ export class ElevationProfile {
         if (this._onKeyDown) {
             window.removeEventListener('keydown', this._onKeyDown, true);
             this._onKeyDown = null;
+        }
+        if (this._onPointerGone) {
+            window.removeEventListener('pointerup', this._onPointerGone);
+            window.removeEventListener('pointercancel', this._onPointerGone);
+            this._onPointerGone = null;
         }
         if (this._chart) {
             this._chart.destroy();

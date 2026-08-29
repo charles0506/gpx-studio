@@ -67,7 +67,7 @@
     }
 </script>
 
-<div class="flex flex-col gap-3 w-[min(20rem,calc(100vw-5rem))] {props.class ?? ''}">
+<div class="flex flex-col gap-3 w-[min(20rem,calc(100vw-104px))] {props.class ?? ''}">
     <span class="text-sm text-muted-foreground">{i18n._('toolbar.share.help')}</span>
 
     {#if !$passphrase}

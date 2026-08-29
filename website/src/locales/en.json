@@ -255,8 +255,6 @@
             "link": "Link",
             "longitude": "Longitude",
             "latitude": "Latitude",
-            "existing": "Links you have made",
-            "refresh": "Re-read the list",
             "create": "Create point of interest",
             "add": "Add point of interest to file",
             "help": "Fill in the form to create a new point of interest, or click on an existing one to edit it. Click on the map to fill the coordinates, or drag points of interest to move them.",
@@ -301,6 +299,8 @@
             "help": "Put the selected routes behind a link. Anyone with the link can open them — no passphrase needed to read.",
             "create": "Create a link",
             "copied": "Copied",
+            "existing": "Links you have made",
+            "refresh": "Re-read the list",
             "note": "The link holds a copy. Deleting it here stops new people opening it; it does not take the routes back off anyone who already has them. Links expire after 90 days."
         },
         "climbs": {

@@ -12,6 +12,7 @@
         type Climb,
     } from '$lib/climbs';
     import { climbCursorKm, climbScreen } from '$lib/climb-view';
+    import { currentTool } from '$lib/components/toolbar/tools';
     import {
         livePosition,
         OFF_ROUTE_METERS,
@@ -40,6 +41,12 @@
     // open to read a hill at the table, and 'off' means off even while
     // following, which is the one the map owed you.
     let visible = $derived($climbScreen === 'on' || ($climbScreen === 'auto' && tracking));
+
+    // A tool panel opens in the same corner. On a phone there is not room
+    // for both, and the panel is the thing being read — the banner would be
+    // sitting on its first two lines. Wide enough and they do not meet, so
+    // the banner stays.
+    let stepAside = $derived($currentTool !== null ? 'hidden md:flex' : 'flex');
 
     // Past the last climb or descent nothing is found here and nothing ahead,
     // and the screen closes rather than holding the one just walked on the map.
@@ -319,7 +326,7 @@
     {@const colour = gradientColour(shape?.markerGradient ?? current.gradient, current.kind)}
     {@const falling = current.kind === 'descent'}
     <div
-        class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
+        class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none {stepAside} flex-row justify-center"
     >
         <div
             bind:clientHeight={cardHeight}
@@ -476,7 +483,7 @@
 {:else if visible && upcoming && here !== undefined}
     {@const ahead = upcoming.kind === 'descent'}
     <div
-        class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
+        class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none {stepAside} flex-row justify-center"
     >
         <div
             bind:clientHeight={cardHeight}
@@ -505,7 +512,7 @@
     </div>
 {:else if visible && toFinish}
     <div
-        class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none flex flex-row justify-center"
+        class="absolute top-0 left-10 right-11 mt-14 z-20 pointer-events-none {stepAside} flex-row justify-center"
     >
         <div
             bind:clientHeight={cardHeight}

@@ -80,10 +80,18 @@
         @apply font-sans;
     }
 
-    div :global(.maplibregl-ctrl-top-right > .maplibregl-ctrl) {
+    div :global(.maplibregl-ctrl-top-right > .maplibregl-ctrl),
+    div :global(.maplibregl-ctrl-bottom-right > .maplibregl-ctrl-group) {
         @apply shadow-md;
         @apply bg-background;
         @apply text-foreground;
+    }
+
+    /* The locate button sits down here, and the map credits sit under it.
+       Pressed for by a thumb, a button that close to the attribution line is
+       a button that opens the credits by accident. */
+    div :global(.maplibregl-ctrl-bottom-right > .maplibregl-ctrl-group) {
+        @apply mb-6;
     }
 
     div :global(.maplibregl-ctrl-icon) {

@@ -656,6 +656,12 @@
         "apply_settings": "Use their settings too",
         "failed": "Could not open the link: "
     },
+    "geolocate": {
+        "find": "Find my location",
+        "denied": "Location permission refused. Allow it in the browser’s site settings and press again.",
+        "timeout": "No fix yet. Somewhere with more sky above it will find one sooner.",
+        "unavailable": "This device cannot get a location right now."
+    },
     "sync": {
         "title": "Sync",
         "description": "Keep the same routes on every device, through your own Cloudflare storage.",

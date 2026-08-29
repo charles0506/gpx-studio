@@ -656,6 +656,12 @@
         "apply_settings": "一併套用對方的設定",
         "failed": "連結打不開："
     },
+    "geolocate": {
+        "find": "定位到我的位置",
+        "denied": "定位權限被拒。到瀏覽器的網站設定把「位置」改成允許，再按一次。",
+        "timeout": "一直收不到定位。空曠一點的地方比較容易收到訊號。",
+        "unavailable": "這台裝置現在拿不到定位。"
+    },
     "sync": {
         "title": "同步",
         "description": "透過你自己的 Cloudflare 儲存空間，讓每台裝置看到同一批軌跡。",

@@ -15,6 +15,8 @@ import MaplibreGeocoder, {
 } from '@maplibre/maplibre-gl-geocoder';
 import '@maplibre/maplibre-gl-geocoder/dist/maplibre-gl-geocoder.css';
 import { get, writable, type Writable } from 'svelte/store';
+import { toast } from 'svelte-sonner';
+import { i18n } from '$lib/i18n.svelte';
 import { settings } from '$lib/logic/settings';
 import { tick } from 'svelte';
 import { ANCHOR_LAYER_KEY, StyleManager } from '$lib/components/map/style';
@@ -56,6 +58,7 @@ export class MapLibreGLMap {
     private _styleManager: StyleManager | null = null;
     private _onLoadCallbacks: ((map: maplibregl.Map) => void)[] = [];
     private _unsubscribes: (() => void)[] = [];
+    private _geolocateWatchdog: MutationObserver | null = null;
     private callOnLoadBinded: () => void = this.callOnLoad.bind(this);
     public layerEventManager: MapLayerEventManager | null = null;
 
@@ -183,13 +186,57 @@ export class MapLibreGLMap {
                 clearProgressHistory();
             };
             geolocateControl.on('trackuserlocationend', stopTracking);
-            geolocateControl.on('error', stopTracking);
+            geolocateControl.on('error', (event: any) => {
+                stopTracking();
+                // Pressing the button and having nothing at all happen is the
+                // worst of the outcomes: there is no way to tell a refused
+                // permission from a broken app. Say which it was.
+                const reason =
+                    event?.code === 1
+                        ? 'geolocate.denied'
+                        : event?.code === 3
+                          ? 'geolocate.timeout'
+                          : 'geolocate.unavailable';
+                toast.error(i18n._(reason));
+            });
 
             // Bottom right, not up with the zoom buttons. It is the one
             // control reached while walking, often one-handed and often with
             // the other hand holding something, and the top corner of a phone
             // is the far end of a thumb.
             map.addControl(geolocateControl, 'bottom-right');
+
+            // The control disables its own button when the browser reports
+            // the location permission as refused, and disables it again after
+            // every refusal. A disabled button does not emit a click, so
+            // pressing it does nothing at all — no dot, no error, no way to
+            // tell a refused permission from a broken app, and on a phone not
+            // even the tooltip that explains it.
+            //
+            // So it is kept pressable, and pressing it produces the message
+            // above saying which it was and what to do. Only where there is a
+            // geolocation API at all: a button that cannot possibly work is
+            // one the control is right to disable.
+            if (navigator.geolocation) {
+                const button = map
+                    .getContainer()
+                    .querySelector('.maplibregl-ctrl-geolocate') as HTMLButtonElement | null;
+                if (button) {
+                    const keepPressable = () => {
+                        if (button.disabled) {
+                            button.disabled = false;
+                            button.title = i18n._('geolocate.find');
+                            button.setAttribute('aria-label', i18n._('geolocate.find'));
+                        }
+                    };
+                    this._geolocateWatchdog = new MutationObserver(keepPressable);
+                    this._geolocateWatchdog.observe(button, {
+                        attributes: true,
+                        attributeFilter: ['disabled'],
+                    });
+                    keepPressable();
+                }
+            }
 
             // Somebody who left the app following them is still walking when
             // they open it again — at a junction, with cold hands, and the
@@ -258,6 +305,10 @@ export class MapLibreGLMap {
     }
 
     destroy() {
+        if (this._geolocateWatchdog) {
+            this._geolocateWatchdog.disconnect();
+            this._geolocateWatchdog = null;
+        }
         if (this._map) {
             this._map.remove();
             this._mapStore.set(null);

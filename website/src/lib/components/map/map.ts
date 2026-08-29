@@ -28,6 +28,27 @@ let fitBoundsOptions: maplibregl.MapOptions['fitBoundsOptions'] = {
     easing: () => 1,
 };
 
+// Whether the map was following you when you last closed it. Kept out of the
+// synced settings on purpose: it is about this device's screen and this
+// walk, not about how the app is set up.
+const TRACKING_KEY = 'geolocate-tracking';
+
+function wasTracking(): boolean {
+    try {
+        return localStorage.getItem(TRACKING_KEY) === '1';
+    } catch {
+        return false;
+    }
+}
+
+function rememberTracking(tracking: boolean): void {
+    try {
+        localStorage.setItem(TRACKING_KEY, tracking ? '1' : '0');
+    } catch {
+        // Private browsing, or storage turned off. Nothing to remember with.
+    }
+}
+
 export class MapLibreGLMap {
     private _maptilerKey: string = '';
     private _map: maplibregl.Map | null = null;
@@ -148,6 +169,7 @@ export class MapLibreGLMap {
                 livePosition.set(position);
             });
             geolocateControl.on('trackuserlocationstart', () => {
+                rememberTracking(true);
                 trackingSince.set(new Date());
                 clearProgressHistory();
                 // Each time tracking starts is a fresh walk; what was drawn
@@ -155,6 +177,7 @@ export class MapLibreGLMap {
                 clearTrail();
             });
             const stopTracking = () => {
+                rememberTracking(false);
                 livePosition.set(undefined);
                 trackingSince.set(undefined);
                 clearProgressHistory();
@@ -163,6 +186,48 @@ export class MapLibreGLMap {
             geolocateControl.on('error', stopTracking);
 
             map.addControl(geolocateControl);
+
+            // Somebody who left the app following them is still walking when
+            // they open it again — at a junction, with cold hands, and the
+            // last thing they want is to hunt for a button. Somebody who has
+            // never used it is not asked for anything.
+            //
+            // Only when the browser already holds the permission: a location
+            // prompt appearing on its own, before anyone has touched
+            // anything, is exactly what this must not do.
+            const resumeTracking = () => {
+                if (!wasTracking()) {
+                    return;
+                }
+                const start = () => geolocateControl.trigger();
+                const permissions = (navigator as any).permissions;
+                if (!permissions?.query) {
+                    // No way to ask. The flag is only set once tracking has
+                    // actually run, so the permission was granted at least
+                    // once; if it has since gone, the error handler clears
+                    // the flag and this does not happen twice.
+                    start();
+                    return;
+                }
+                permissions
+                    .query({ name: 'geolocation' })
+                    .then((status: PermissionStatus) => {
+                        if (status.state === 'granted') {
+                            start();
+                        } else if (status.state === 'denied') {
+                            rememberTracking(false);
+                        }
+                    })
+                    .catch(() => start());
+            };
+            // The control cannot be triggered until the map has loaded. A
+            // listener added after that has already happened never fires, so
+            // the state is checked rather than assumed.
+            if (map.loaded()) {
+                resumeTracking();
+            } else {
+                map.on('load', resumeTracking);
+            }
         }
         const scaleControl = new maplibregl.ScaleControl({
             unit: get(distanceUnits),

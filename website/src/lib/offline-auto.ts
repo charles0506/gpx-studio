@@ -1,4 +1,4 @@
-import { askToKeepStorage } from '$lib/persistence';
+import { askToKeepStorage, storageUse } from '$lib/persistence';
 import { get } from 'svelte/store';
 
 import { selection } from '$lib/logic/selection';
@@ -48,6 +48,15 @@ async function run() {
 
     const plan = planTiles(zooms());
     if (plan.urls.length === 0 || plan.urls.length > MAX_TILE_ENTRIES) {
+        return;
+    }
+
+    // Maps can be fetched again; the routes cannot. When the browser is
+    // running out of room for this origin it evicts the whole of it, so
+    // tiles stop being collected well before they are the reason the routes
+    // go. A quarter of the allowance left is enough to stop at.
+    const storage = await storageUse();
+    if (storage && storage.quota > 0 && storage.used / storage.quota > 0.75) {
         return;
     }
 

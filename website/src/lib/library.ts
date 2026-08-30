@@ -1,4 +1,6 @@
 import { get } from 'svelte/store';
+import FileSaver from 'file-saver';
+import JSZip from 'jszip';
 import { buildGPX, parseGPX, type GPXFile } from 'gpx';
 import { fileStateCollection } from '$lib/logic/file-state';
 import { fileActions } from '$lib/logic/file-actions';
@@ -134,6 +136,55 @@ export async function openRoute(id: string): Promise<string> {
     const ids = fileActions.addMultiple([file]);
     selection.selectFileWhenLoaded(ids[0]);
     return data.name ?? id;
+}
+
+/**
+ * Every route on the shelf, in one zip.
+ *
+ * The shelf is the only copy of most of these: they are in somebody else’s
+ * storage, behind a passphrase, and nothing on this machine has them. That is
+ * a fine place for a route to live and a poor place for it to only live, so
+ * there has to be a way to take the lot home in one go.
+ *
+ * Fetched one at a time on purpose. The shelf is tens of routes, not
+ * thousands, and thirty parallel requests to the same store is a good way to
+ * be rate limited half way through and end up with half a backup.
+ */
+export async function downloadAllRoutes(
+    onProgress?: (done: number, total: number) => void
+): Promise<number> {
+    const routes = await listRoutes();
+    if (routes.length === 0) {
+        throw new Error('the shelf is empty');
+    }
+
+    const zip = new JSZip();
+    let saved = 0;
+    for (const route of routes) {
+        onProgress?.(saved, routes.length);
+        const data = await request('GET', route.id);
+        if (typeof data?.gpx !== 'string') {
+            continue;
+        }
+        // Two routes may share a name; neither should overwrite the other on
+        // the way out.
+        const base = data.name ?? route.name ?? route.id;
+        let filename = base;
+        for (let i = 1; zip.files[filename + '.gpx']; i += 1) {
+            filename = `${base}-${i}`;
+        }
+        zip.file(filename + '.gpx', data.gpx);
+        saved += 1;
+    }
+    onProgress?.(saved, routes.length);
+
+    if (saved === 0) {
+        throw new Error('nothing could be read');
+    }
+    const stamp = new Date().toISOString().slice(0, 10);
+    const blob = await zip.generateAsync({ type: 'blob' });
+    FileSaver.saveAs(blob, `路線庫-${stamp}.zip`);
+    return saved;
 }
 
 export async function removeRoute(id: string): Promise<void> {

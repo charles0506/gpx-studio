@@ -645,6 +645,8 @@
         "refresh": "重新整理",
         "remove": "從路線庫移除",
         "shelve": "把選取的路線存入路線庫",
+        "download_all": "全部下載成 zip",
+        "downloading": "下載中",
         "shelved": "已存入 {n} 條路線",
         "opened": "已開啟 {name}",
         "removed": "已刪除",

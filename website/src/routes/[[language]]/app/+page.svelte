@@ -30,6 +30,7 @@
     import { getURLForGoogleDriveFile } from '$lib/components/embedding/embedding';
     import { db } from '$lib/db';
     import { fileStateCollection } from '$lib/logic/file-state';
+    import { askToKeepStorage } from '$lib/persistence';
     import { acceptSettings, openShare } from '$lib/share';
     import { toast } from 'svelte-sonner';
 
@@ -97,6 +98,10 @@
     onMount(async () => {
         settings.connectToDatabase(db);
         fileStateCollection.connectToDatabase(db).then(() => {
+            // The routes are the part that cannot be fetched again. Ask the
+            // browser to keep this origin as soon as there is one to keep,
+            // rather than waiting for the map tiles to make the case.
+            void askToKeepStorage();
             let files: string[] = JSON.parse(page.url.searchParams.get('files') || '[]');
             let ids: string[] = JSON.parse(page.url.searchParams.get('ids') || '[]');
             let urls: string[] = files.concat(ids.map(getURLForGoogleDriveFile));

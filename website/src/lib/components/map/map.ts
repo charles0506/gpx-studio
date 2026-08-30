@@ -163,6 +163,13 @@ export class MapLibreGLMap {
                     lat: event.coords.latitude,
                     lon: event.coords.longitude,
                     accuracy: event.coords.accuracy,
+                    // Kept even though the route has its own heights: off the
+                    // route there is nothing else to say how high you are.
+                    altitude:
+                        typeof event.coords.altitude === 'number' &&
+                        Number.isFinite(event.coords.altitude)
+                            ? event.coords.altitude
+                            : undefined,
                     at: new Date(event.timestamp ?? Date.now()),
                 };
                 // Recorded before the store is set, so that whatever recomputes

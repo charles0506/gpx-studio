@@ -7,6 +7,11 @@ export type LivePosition = {
     lon: number;
     /** Metres of GPS uncertainty, as the device reports it. */
     accuracy: number;
+    /**
+     * Height above sea level, where the receiver offers one. Absent indoors
+     * and on devices that place you from wifi rather than from satellites.
+     */
+    altitude?: number;
     at: Date;
 };
 

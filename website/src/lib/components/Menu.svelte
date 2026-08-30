@@ -50,6 +50,8 @@
         Maximize2,
         Minimize2,
         RefreshCw,
+        ZoomIn,
+        ZoomOut,
     } from '@lucide/svelte';
     import { map } from '$lib/components/map/map';
     import { editMetadata } from '$lib/components/file-list/metadata/utils.svelte';
@@ -62,6 +64,7 @@
     import Export from '$lib/components/export/Export.svelte';
     import { mode, setMode } from 'mode-watcher';
     import { i18n } from '$lib/i18n.svelte';
+    import { enlargeFont, resetFont, shrinkFont } from '$lib/font-scale';
     import { languages } from '$lib/languages';
     import { getURLForLanguage } from '$lib/utils';
     import { settings } from '$lib/logic/settings';
@@ -414,6 +417,16 @@
                     <Menubar.CheckboxItem bind:checked={$showSelectedOnly}>
                         <Route size="16" />{i18n._('menu.show_selected_only')}
                     </Menubar.CheckboxItem>
+                    <Menubar.Separator />
+                    <Menubar.Item inset onclick={enlargeFont}>
+                        <ZoomIn size="16" />{i18n._('menu.font_larger')}
+                    </Menubar.Item>
+                    <Menubar.Item inset onclick={shrinkFont}>
+                        <ZoomOut size="16" />{i18n._('menu.font_smaller')}
+                    </Menubar.Item>
+                    <Menubar.Item inset onclick={resetFont}>
+                        {i18n._('menu.font_reset')}
+                    </Menubar.Item>
                     <Menubar.Separator />
                     <Menubar.CheckboxItem bind:checked={$offlineAutoDownload}>
                         <CloudDownload size="16" />{i18n._('offline.automatic')}

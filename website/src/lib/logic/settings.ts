@@ -243,6 +243,14 @@ export const settings = {
         'slope',
         getValueValidator(['slope', 'surface', 'highway', undefined], 'slope')
     ),
+    // How large the interface is drawn, as a multiple of the browser default.
+    // Kept per device: what a phone at arm’s length needs is not what a
+    // desktop needs, and the same person uses both.
+    fontScale: new Setting<number>('fontScale', 1, (value: number) =>
+        typeof value === 'number' && Number.isFinite(value) && value >= 0.8 && value <= 1.6
+            ? value
+            : 1
+    ),
     treeFileView: new Setting<boolean>('fileView', false),
     minimizeRoutingMenu: new Setting('minimizeRoutingMenu', false),
     routing: new Setting('routing', true),

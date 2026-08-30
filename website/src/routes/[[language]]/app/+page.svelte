@@ -31,6 +31,7 @@
     import { db } from '$lib/db';
     import { fileStateCollection } from '$lib/logic/file-state';
     import { askToKeepStorage } from '$lib/persistence';
+    import { connectFontScale } from '$lib/font-scale';
     import { acceptSettings, openShare } from '$lib/share';
     import { toast } from 'svelte-sonner';
 
@@ -97,6 +98,7 @@
 
     onMount(async () => {
         settings.connectToDatabase(db);
+        connectFontScale();
         fileStateCollection.connectToDatabase(db).then(() => {
             // The routes are the part that cannot be fetched again. Ask the
             // browser to keep this origin as soon as there is one to keep,

@@ -499,6 +499,12 @@ export class ElevationProfile {
         // reading, it is a jump.
         const fingers = new Map<number, number>();
         let lastTap = 0;
+        // A double tap reaches here twice: once as the pair of touches below,
+        // and again as the dblclick the browser synthesises from them. Handled
+        // both times it zooms in and straight back out, which looks exactly
+        // like a gesture that does nothing — and left the view never zoomed,
+        // so scrolling at the edges never had anything to scroll either.
+        let lastTouchAt = 0;
 
         // The midpoint between two fingers, so that moving them together
         // slides the view. The zoom plugin scales about a point but never
@@ -621,6 +627,7 @@ export class ElevationProfile {
         };
         const onMouseUp = (evt: PointerEvent) => {
             if (evt.pointerType === 'touch') {
+                lastTouchAt = Date.now();
                 const alone = fingers.size === 1;
                 fingers.delete(evt.pointerId);
                 stopEdgeScroll();
@@ -683,10 +690,14 @@ export class ElevationProfile {
         };
         window.addEventListener('pointerup', this._onPointerGone);
         window.addEventListener('pointercancel', this._onPointerGone);
-        // The same for a mouse.
-        this._canvas.addEventListener('dblclick', (evt: MouseEvent) =>
-            this.zoomAround(kmAt(getIndex(evt as unknown as PointerEvent)))
-        );
+        // The same for a mouse — and only for a mouse: after a finger, this is
+        // the browser repeating a gesture already dealt with.
+        this._canvas.addEventListener('dblclick', (evt: MouseEvent) => {
+            if (Date.now() - lastTouchAt < 700) {
+                return;
+            }
+            this.zoomAround(kmAt(getIndex(evt as unknown as PointerEvent)));
+        });
 
         // Reading a profile with a mouse is a matter of a few metres either
         // way, and a hand on a trackpad cannot hold that still. With the

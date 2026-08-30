@@ -648,6 +648,7 @@
         "shelve_all": "把全部路線存入路線庫",
         "uploading": "上傳中",
         "shelved": "已存入 {n} 條路線",
+        "unchanged": "都已經是最新的，沒有東西要傳",
         "opened": "已開啟 {name}",
         "removed": "已刪除",
         "empty": "路線庫還是空的。",

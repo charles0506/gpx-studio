@@ -19,6 +19,8 @@ import { settings } from '$lib/logic/settings';
 export type LibraryEntry = {
     id: string;
     name: string;
+    /** Fingerprint of the stored file, to tell an unchanged route from an edited one. */
+    hash?: string;
     /** Strings, because they come back from storage metadata. */
     km?: string;
     ascent?: string;
@@ -66,7 +68,9 @@ export async function listRoutes(): Promise<LibraryEntry[]> {
  * routes one by one on a phone to protect them is a chore nobody does twice,
  * so this takes the lot.
  */
-export async function shelveAll(onProgress?: (done: number, total: number) => void) {
+export async function shelveAll(
+    onProgress?: (done: number, total: number) => void
+): Promise<LibraryEntry[]> {
     const fileIds = get(settings.fileOrder).filter((fileId: string) =>
         Boolean(fileStateCollection.getFile(fileId))
     );
@@ -76,7 +80,7 @@ export async function shelveAll(onProgress?: (done: number, total: number) => vo
     return shelveFiles(fileIds, onProgress);
 }
 
-export async function shelveSelection(): Promise<number> {
+export async function shelveSelection(): Promise<LibraryEntry[]> {
     const selected = new Set(
         get(selection)
             .getSelected()
@@ -89,13 +93,37 @@ export async function shelveSelection(): Promise<number> {
     return shelveFiles([...selected]);
 }
 
+/**
+ * Shelve some files, and hand back the entries that were written.
+ *
+ * Handed back rather than left to be discovered in the next listing: that
+ * listing is eventually consistent, so reading it straight after a write
+ * returns the shelf as it was before — and the route just uploaded appears
+ * to have gone nowhere.
+ */
 async function shelveFiles(
     fileIds: string[],
     onProgress?: (done: number, total: number) => void
-): Promise<number> {
-    let saved = 0;
+): Promise<LibraryEntry[]> {
+    // What is on the shelf already, so that a route which has not been
+    // touched since it was last put there is not sent again. Shelving a
+    // whole desk is mostly re-shelving: on a phone, on a hill, the ones
+    // worth spending the connection on are the ones that changed.
+    const existing = new Map<string, string | undefined>();
+    try {
+        for (const route of await listRoutes()) {
+            existing.set(route.id, route.hash);
+        }
+    } catch (error) {
+        // The shelf could not be listed. Everything is sent, which is
+        // what would have happened anyway.
+    }
+
+    const saved: LibraryEntry[] = [];
+    let done = 0;
     for (const fileId of fileIds) {
-        onProgress?.(saved, fileIds.length);
+        onProgress?.(done, fileIds.length);
+        done += 1;
         const file = fileStateCollection.getFile(fileId);
         if (!file) {
             continue;
@@ -106,19 +134,22 @@ async function shelveFiles(
         const global = fileStateCollection
             .getStatistics(fileId)
             ?.getStatisticsFor(new ListFileItem(fileId))?.global;
-        await request(
+        const gpx = buildGPX(file, []);
+        const id = idFor(name);
+        const hash = await fingerprint(gpx);
+        if (existing.get(id) === hash) {
+            continue;
+        }
+        const km = global ? global.distance.total.toFixed(2) : '';
+        const ascent = global ? String(Math.round(global.elevation.gain)) : '';
+        const { updatedAt } = await request(
             'PUT',
-            idFor(name),
-            JSON.stringify({
-                name,
-                gpx: buildGPX(file, []),
-                km: global ? global.distance.total.toFixed(2) : '',
-                ascent: global ? Math.round(global.elevation.gain) : '',
-            })
+            id,
+            JSON.stringify({ name, gpx, hash, km, ascent })
         );
-        saved += 1;
+        saved.push({ id, name, hash, km, ascent, updatedAt });
     }
-    onProgress?.(saved, fileIds.length);
+    onProgress?.(fileIds.length, fileIds.length);
     return saved;
 }
 
@@ -137,6 +168,29 @@ function idFor(name: string): string {
     // Names in Chinese slug down to nothing, so they are given a short digest
     // of the name instead of an empty id.
     return slug.length > 0 ? slug : `r${digest(name)}`;
+}
+
+/**
+ * A fingerprint of a route file.
+ *
+ * Wide on purpose. The only thing it decides is whether to skip an upload,
+ * and a collision there means the shelf quietly keeps an old version of a
+ * route somebody believes they saved — which is the failure this whole
+ * corner of the app exists to prevent. The 32-bit digest below is fine for
+ * turning a name into a key and much too narrow for this.
+ */
+async function fingerprint(text: string): Promise<string> {
+    try {
+        const bytes = new TextEncoder().encode(text);
+        const sum = await crypto.subtle.digest('SHA-256', bytes);
+        return Array.from(new Uint8Array(sum).slice(0, 8))
+            .map((byte) => byte.toString(16).padStart(2, '0'))
+            .join('');
+    } catch (error) {
+        // No subtle crypto here. A narrow fingerprint is still better than
+        // uploading everything every time, and it errs towards uploading.
+        return `f${digest(text)}`;
+    }
 }
 
 function digest(text: string): string {

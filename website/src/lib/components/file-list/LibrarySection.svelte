@@ -27,6 +27,16 @@
     // How far shelving the whole desk has got. It is one request per route,
     // so with thirty of them it is worth saying so.
     let working: string | undefined = $state(undefined);
+    // Said out loud because most of a shelving run is now skipped work:
+    // pressing upload and seeing nothing happen is indistinguishable from a
+    // button that does not work.
+    let notice: string | undefined = $state(undefined);
+    let noticeTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+    function say(text: string) {
+        notice = text;
+        clearTimeout(noticeTimer);
+        noticeTimer = setTimeout(() => (notice = undefined), 5000);
+    }
 
     let hasSelection = $derived($selection ? $selection.size > 0 : false);
     // Nothing picked out means everything: selecting ten routes one at a
@@ -84,18 +94,38 @@
                 title={hasSelection ? i18n._('library.shelve') : i18n._('library.shelve_all')}
                 onclick={() =>
                     run(async () => {
+                        let saved;
                         if (hasSelection) {
-                            await shelveSelection();
-                            return;
+                            saved = await shelveSelection();
+                        } else {
+                            try {
+                                saved = await shelveAll((done, count) => {
+                                    working = `${done}/${count}`;
+                                });
+                            } finally {
+                                working = undefined;
+                            }
                         }
-                        try {
-                            await shelveAll((done, total) => {
-                                working = `${done}/${total}`;
-                            });
-                        } finally {
-                            working = undefined;
+                        // The list is rebuilt from what was actually
+                        // written, not by asking the shelf again: that
+                        // answer lags a write by up to a minute, and a
+                        // route just uploaded would appear to have gone
+                        // nowhere.
+                        if (saved.length > 0) {
+                            const merged = new Map(routes.map((route) => [route.id, route]));
+                            for (const entry of saved) {
+                                merged.set(entry.id, entry);
+                            }
+                            routes = [...merged.values()].sort((a, b) =>
+                                (a.name ?? '').localeCompare(b.name ?? '')
+                            );
                         }
-                    })}
+                        say(
+                            saved.length === 0
+                                ? i18n._('library.unchanged')
+                                : i18n._('library.shelved').replace('{n}', String(saved.length))
+                        );
+                    }, false)}
             >
                 <CloudUpload size="12" />
             </Button>
@@ -146,6 +176,10 @@
         {:else}
             <span class="text-xs text-muted-foreground px-1">{i18n._('library.empty')}</span>
         {/each}
+    {/if}
+
+    {#if notice}
+        <span class="px-1 text-[10px] text-muted-foreground">{notice}</span>
     {/if}
 
     {#if working}

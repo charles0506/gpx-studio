@@ -143,6 +143,12 @@ export async function onRequestPut({ request, env }) {
         name: payload.name.slice(0, 200),
         km: String(payload.km ?? ''),
         ascent: String(payload.ascent ?? ''),
+        // A fingerprint of the file, so that shelving everything again can
+        // tell which routes have actually changed without reading them all
+        // back. Whatever the client says it is: it is only ever compared
+        // with what the same client computed, and a wrong answer costs an
+        // upload that was not needed.
+        hash: String(payload.hash ?? '').slice(0, 32),
         updatedAt,
     };
     const stored = JSON.stringify({ id, name: metadata.name, gpx: payload.gpx, updatedAt });

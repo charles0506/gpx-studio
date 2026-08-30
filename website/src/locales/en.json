@@ -648,6 +648,7 @@
         "shelve_all": "Shelve every open route",
         "uploading": "Uploading",
         "shelved": "{n} route(s) saved",
+        "unchanged": "Everything on the shelf is already current",
         "opened": "Opened {name}",
         "removed": "Removed",
         "empty": "Nothing in the library yet.",

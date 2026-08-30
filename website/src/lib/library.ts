@@ -7,6 +7,7 @@ import { fileActions } from '$lib/logic/file-actions';
 import { selection } from '$lib/logic/selection';
 import { ListFileItem } from '$lib/components/file-list/file-list';
 import { passphrase } from '$lib/sync';
+import { settings } from '$lib/logic/settings';
 
 /**
  * A shelf of routes in the cloud, one object each.
@@ -59,6 +60,24 @@ export async function listRoutes(): Promise<LibraryEntry[]> {
  * rather than by the server so that saving the same route twice replaces it
  * rather than growing the shelf.
  */
+/**
+ * Put every open route on the shelf.
+ *
+ * The local copy is the fragile one: it lives in storage the browser is free
+ * to throw away, and it throws away a whole origin at a time. Selecting ten
+ * routes one by one on a phone to protect them is a chore nobody does twice,
+ * so this takes the lot.
+ */
+export async function shelveAll(onProgress?: (done: number, total: number) => void) {
+    const fileIds = get(settings.fileOrder).filter((fileId: string) =>
+        Boolean(fileStateCollection.getFile(fileId))
+    );
+    if (fileIds.length === 0) {
+        throw new Error('nothing open');
+    }
+    return shelveFiles(fileIds, onProgress);
+}
+
 export async function shelveSelection(): Promise<number> {
     const selected = new Set(
         get(selection)
@@ -69,9 +88,16 @@ export async function shelveSelection(): Promise<number> {
     if (selected.size === 0) {
         throw new Error('nothing selected');
     }
+    return shelveFiles([...selected]);
+}
 
+async function shelveFiles(
+    fileIds: string[],
+    onProgress?: (done: number, total: number) => void
+): Promise<number> {
     let saved = 0;
-    for (const fileId of selected) {
+    for (const fileId of fileIds) {
+        onProgress?.(saved, fileIds.length);
         const file = fileStateCollection.getFile(fileId);
         if (!file) {
             continue;
@@ -94,6 +120,7 @@ export async function shelveSelection(): Promise<number> {
         );
         saved += 1;
     }
+    onProgress?.(saved, fileIds.length);
     return saved;
 }
 

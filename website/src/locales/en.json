@@ -645,6 +645,7 @@
         "refresh": "Refresh",
         "remove": "Remove from library",
         "shelve": "Put selection in the library",
+        "shelve_all": "Shelve every open route",
         "download_all": "Download all as a zip",
         "downloading": "Downloading",
         "shelved": "{n} route(s) saved",

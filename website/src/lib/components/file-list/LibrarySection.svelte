@@ -16,23 +16,31 @@
         listRoutes,
         openRoute,
         removeRoute,
+        shelveAll,
         shelveSelection,
         type LibraryEntry,
     } from '$lib/library';
+    import { settings } from '$lib/logic/settings';
     import { selection } from '$lib/logic/selection';
 
     // The shelf sits under the open files rather than behind a dialog: picking
     // the route for the day is the same act as picking one already open, and it
     // should look like it.
+    const { fileOrder } = settings;
+
     let routes: LibraryEntry[] = $state([]);
     let busy = $state(false);
     let error: string | undefined = $state(undefined);
     let loaded = $state(false);
     // How far a download of the whole shelf has got. It is one request per
     // route, so on a shelf of thirty it is worth saying so.
-    let downloading: string | undefined = $state(undefined);
+    let working: string | undefined = $state(undefined);
 
     let hasSelection = $derived($selection ? $selection.size > 0 : false);
+    // Nothing picked out means everything: selecting ten routes one at a
+    // time on a phone, to protect them from storage that may be cleared
+    // without warning, is a chore nobody does twice.
+    let openFiles = $derived($fileOrder.length);
 
     async function run(action: () => Promise<void>, refresh = true) {
         busy = true;
@@ -80,9 +88,22 @@
             <Button
                 variant="ghost"
                 class="w-6 h-6 p-0"
-                disabled={busy || !hasSelection}
-                title={i18n._('library.shelve')}
-                onclick={() => run(async () => void (await shelveSelection()))}
+                disabled={busy || (!hasSelection && openFiles === 0)}
+                title={hasSelection ? i18n._('library.shelve') : i18n._('library.shelve_all')}
+                onclick={() =>
+                    run(async () => {
+                        if (hasSelection) {
+                            await shelveSelection();
+                            return;
+                        }
+                        try {
+                            await shelveAll((done, total) => {
+                                working = `${done}/${total}`;
+                            });
+                        } finally {
+                            working = undefined;
+                        }
+                    })}
             >
                 <CloudUpload size="12" />
             </Button>
@@ -95,10 +116,10 @@
                     run(async () => {
                         try {
                             await downloadAllRoutes((done, total) => {
-                                downloading = `${done}/${total}`;
+                                working = `${done}/${total}`;
                             });
                         } finally {
-                            downloading = undefined;
+                            working = undefined;
                         }
                     }, false)}
             >
@@ -153,10 +174,10 @@
         {/each}
     {/if}
 
-    {#if downloading}
+    {#if working}
         <span class="text-[10px] text-muted-foreground px-1 tabular-nums">
-            {i18n._('library.downloading')}
-            {downloading}
+            {i18n._('library.working')}
+            {working}
         </span>
     {/if}
 

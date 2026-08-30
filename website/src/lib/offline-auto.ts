@@ -1,3 +1,4 @@
+import { askToKeepStorage } from '$lib/persistence';
 import { get } from 'svelte/store';
 
 import { selection } from '$lib/logic/selection';
@@ -61,6 +62,11 @@ async function run() {
     controller?.abort();
     controller = new AbortController();
     await fetchTiles(missing, () => {}, controller.signal);
+
+    // Now that this site is holding maps for a day out, ask the browser to
+    // stop treating its storage as disposable — the routes and settings live
+    // in the same origin, and an eviction takes them along with the tiles.
+    void askToKeepStorage();
 }
 
 function schedule() {

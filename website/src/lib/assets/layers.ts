@@ -1086,7 +1086,11 @@ export const overpassTree: LayerTreeType = {
 };
 
 // Default basemap used
-export const defaultBasemap = 'libertyTopo';
+// This build is for walking in Taiwan, and the map that shows the old trails,
+// the shelters and the contours somebody on foot actually needs is the Rudy
+// map. Somebody arriving on a shared link should see the route on it, not on
+// a general-purpose basemap they would then have to know to change.
+export const defaultBasemap = 'rudyMap';
 
 // Default overlays used (none)
 export const defaultOverlays: LayerTreeType = {

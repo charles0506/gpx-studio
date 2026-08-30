@@ -235,10 +235,13 @@ export const settings = {
         [],
         getArrayValidator<AdditionalDataset>(['speed', 'hr', 'cad', 'atemp', 'power'])
     ),
+    // Coloured by gradient from the start. An uncoloured profile is a grey
+    // shape that says how high; coloured, it says how steep, which is the
+    // thing being looked for when somebody opens a route they have not walked.
     elevationFill: new Setting<ElevationFill>(
         'elevationFill',
-        undefined,
-        getValueValidator(['slope', 'surface', 'highway', undefined], undefined)
+        'slope',
+        getValueValidator(['slope', 'surface', 'highway', undefined], 'slope')
     ),
     treeFileView: new Setting<boolean>('fileView', false),
     minimizeRoutingMenu: new Setting('minimizeRoutingMenu', false),

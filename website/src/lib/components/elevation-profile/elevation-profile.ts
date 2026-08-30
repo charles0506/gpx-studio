@@ -87,6 +87,8 @@ export class ElevationProfile {
     private _pointerOver = false;
     private _onKeyDown: ((event: KeyboardEvent) => void) | null = null;
     private _onPointerGone: ((event: PointerEvent) => void) | null = null;
+    // Where the cursor is and what is under it, for the axis labels.
+    private _readout: { x: number; y: number; slope: number } | null = null;
     private _canvas: HTMLCanvasElement;
     private _overlay: HTMLCanvasElement;
     private _dragging = false;
@@ -213,7 +215,18 @@ export class ElevationProfile {
                     enabled: true,
                 },
                 tooltip: {
-                    enabled: () => !this._dragging && !this._panning,
+                    // Nothing is drawn. The readings go on the axes instead —
+                    // a box in the middle of the chart covers the ground it is
+                    // describing, which on a phone is most of it.
+                    //
+                    // Off, but with an external handler that draws nothing:
+                    // the library builds the model when either is set and
+                    // paints only when enabled. The model is what matters,
+                    // because building it runs the callbacks below, and they
+                    // are what move the marker on the map and the cursor on
+                    // the climb screen.
+                    enabled: false,
+                    external: () => {},
                     callbacks: {
                         title: () => {
                             return '';
@@ -248,7 +261,16 @@ export class ElevationProfile {
 
                             // Drives the marker on the map.
                             this._hoveredPoint.set(this._dragging ? null : point.coordinates);
-                            // And stands in for a GPS fix on the climb screen.
+                            // Taking a range with the mouse, or sliding the
+                            // view along, is not a reading: the model is built
+                            // either way now, so the two that used to be
+                            // spared by the tooltip being off have to say so
+                            // themselves.
+                            if (this._dragging || this._panning) {
+                                this._readout = null;
+                                return [];
+                            }
+                            // Stands in for a GPS fix on the climb screen.
                             climbCursorKm.set(point.km);
                             this._cursorIndex = point.index;
                             let slope = {
@@ -291,11 +313,12 @@ export class ElevationProfile {
                                 }
                             }
 
-                            if (point.time) {
-                                labels.push(
-                                    `    ${i18n._('quantities.time')}: ${i18n.df.format(point.time)}`
-                                );
-                            }
+                            this._readout = {
+                                x: point.x,
+                                y: point.y,
+                                slope: point.slope.at,
+                            };
+                            this.updateOverlay();
 
                             return labels;
                         },
@@ -670,7 +693,11 @@ export class ElevationProfile {
         // pointer over the chart the arrow keys walk the route a track point
         // at a time, ten at a time with shift held.
         this._canvas.addEventListener('pointerenter', () => (this._pointerOver = true));
-        this._canvas.addEventListener('pointerleave', () => (this._pointerOver = false));
+        this._canvas.addEventListener('pointerleave', () => {
+            this._pointerOver = false;
+            this._readout = null;
+            this.updateOverlay();
+        });
 
         const moveCursorTo = (index: number | undefined) => {
             const data = this._chart?.data.datasets[0]?.data as any[] | undefined;
@@ -1090,6 +1117,69 @@ export class ElevationProfile {
 
         this.drawClimbs();
         this.drawLivePosition();
+        this.drawReadout();
+    }
+
+    /**
+     * What is under the cursor, written on the axes it belongs to.
+     *
+     * Height goes on the height axis and distance on the distance axis, where
+     * the eye is already looking to read them. The gradient has no axis of its
+     * own, so it rides the cursor line at the top of the chart, out of the way
+     * of the ground it describes.
+     */
+    private drawReadout() {
+        const readout = this._readout;
+        const context = this._overlay.getContext('2d');
+        if (!readout || !this._chart || !context) {
+            return;
+        }
+
+        const area = this._chart.chartArea;
+        const x = this._chart.scales.x.getPixelForValue(readout.x);
+        const y = this._chart.scales.y.getPixelForValue(readout.y);
+        if (!Number.isFinite(x) || !Number.isFinite(y) || x < area.left || x > area.right) {
+            return;
+        }
+
+        context.save();
+        context.setLineDash([3, 3]);
+        context.strokeStyle = 'rgba(15, 23, 42, 0.45)';
+        context.lineWidth = 1;
+        context.beginPath();
+        context.moveTo(x, area.top);
+        context.lineTo(x, area.bottom);
+        context.stroke();
+        context.setLineDash([]);
+
+        const chip = (text: string, atX: number, atY: number, colour: string) => {
+            context.font = '600 11px system-ui, sans-serif';
+            const width = context.measureText(text).width + 10;
+            const height = 17;
+            // Kept inside the canvas: at either end of the route the label
+            // would otherwise hang off the edge and be cut in half.
+            const left = Math.min(Math.max(atX - width / 2, 1), this._overlay.width - width - 1);
+            const top = Math.min(Math.max(atY - height / 2, 1), this._overlay.height - height - 1);
+            context.fillStyle = colour;
+            context.beginPath();
+            context.roundRect(left, top, width, height, 4);
+            context.fill();
+            context.fillStyle = 'white';
+            context.textBaseline = 'middle';
+            context.textAlign = 'center';
+            context.fillText(text, left + width / 2, top + height / 2 + 0.5);
+        };
+
+        const ink = 'rgba(15, 23, 42, 0.88)';
+        chip(getElevationWithUnits(readout.y, false), area.left, y, ink);
+        chip(getDistanceWithUnits(readout.x, false), x, area.bottom + 10, ink);
+        chip(
+            `${readout.slope.toFixed(1)} %`,
+            x,
+            area.top + 10,
+            gradientColour(Math.abs(readout.slope), readout.slope >= 0 ? 'climb' : 'descent')
+        );
+        context.restore();
     }
 
     slopeFillCallback(context: ScriptableLineSegmentContext & { p0: { raw: any } }) {

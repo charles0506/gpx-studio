@@ -142,6 +142,13 @@ export class MapLibreGLMap {
             const geolocateControl = new maplibregl.GeolocateControl({
                 positionOptions: {
                     enableHighAccuracy: true,
+                    // A fix the phone took in the last quarter minute is
+                    // good enough to start with. Refusing it — which is the
+                    // default — means standing there watching a spinner while
+                    // the receiver works out again what it already knew. At
+                    // walking pace fifteen seconds is about twenty metres of
+                    // staleness, and the live fix replaces it within seconds.
+                    maximumAge: 15000,
                 },
                 fitBoundsOptions,
                 trackUserLocation: true,

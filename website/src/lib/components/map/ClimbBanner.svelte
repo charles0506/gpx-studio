@@ -11,7 +11,7 @@
         routeSamples,
         type Climb,
     } from '$lib/climbs';
-    import { climbCursorKm, climbScreen } from '$lib/climb-view';
+    import { climbCursorHeld, climbCursorKm, climbScreen } from '$lib/climb-view';
     import { currentTool } from '$lib/components/toolbar/tools';
     import {
         livePosition,
@@ -50,9 +50,15 @@
 
     // Past the last climb or descent nothing is found here and nothing ahead,
     // and the screen closes rather than holding the one just walked on the map.
+    // A finger on the profile outranks the fix while it is down. Lifted, the
+    // screen goes straight back to where your feet are — a preview that had
+    // to be dismissed would be worse than no preview at all.
+    let previewing = $derived($climbCursorHeld && $climbCursorKm !== undefined);
     let here = $derived(
-        progress?.km ??
-            ($climbScreen === 'on' ? ($climbCursorKm ?? climbs[0]?.startKm ?? 0) : undefined)
+        previewing
+            ? $climbCursorKm
+            : (progress?.km ??
+                  ($climbScreen === 'on' ? ($climbCursorKm ?? climbs[0]?.startKm ?? 0) : undefined))
     );
     let current = $derived(here === undefined ? undefined : climbAt(climbs, here));
     let upcoming = $derived(here !== undefined && !current ? nextClimb(climbs, here) : undefined);

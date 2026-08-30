@@ -25,7 +25,7 @@ import type { Coordinates, GPXGlobalStatistics, GPXStatisticsGroup } from 'gpx';
 import { getHighwayColor, getSlopeColor, getSurfaceColor } from '$lib/assets/colors';
 import { departureTime, routeRainfall } from '$lib/weather';
 import { livePosition, OFF_ROUTE_METERS, progressAlongRoute } from '$lib/live-position';
-import { climbCursorKm } from '$lib/climb-view';
+import { climbCursorHeld, climbCursorKm } from '$lib/climb-view';
 import { climbAt, findClimbsAndDescents, gradientColour } from '$lib/climbs';
 import { cumulativeHikingTime, secondsAt, type HikingTimePoint } from '$lib/hiking-time';
 
@@ -574,6 +574,7 @@ export class ElevationProfile {
             if (evt.pointerType === 'touch') {
                 fingers.set(evt.pointerId, evt.clientX);
                 if (fingers.size === 1) {
+                    climbCursorHeld.set(true);
                     moveCursorTo(getIndex(evt));
                 } else {
                     stopEdgeScroll();
@@ -687,6 +688,9 @@ export class ElevationProfile {
             fingers.delete(evt.pointerId);
             stopEdgeScroll();
             lastMidpoint = midpoint();
+            if (fingers.size === 0) {
+                climbCursorHeld.set(false);
+            }
         };
         window.addEventListener('pointerup', this._onPointerGone);
         window.addEventListener('pointercancel', this._onPointerGone);
@@ -703,9 +707,18 @@ export class ElevationProfile {
         // way, and a hand on a trackpad cannot hold that still. With the
         // pointer over the chart the arrow keys walk the route a track point
         // at a time, ten at a time with shift held.
-        this._canvas.addEventListener('pointerenter', () => (this._pointerOver = true));
+        // A mouse has no lifting to do, so hovering is the holding: the panel
+        // follows the pointer while it is over the chart and goes back to
+        // your position when it leaves.
+        this._canvas.addEventListener('pointerenter', (evt: PointerEvent) => {
+            this._pointerOver = true;
+            if (evt.pointerType !== 'touch') {
+                climbCursorHeld.set(true);
+            }
+        });
         this._canvas.addEventListener('pointerleave', () => {
             this._pointerOver = false;
+            climbCursorHeld.set(false);
             this._readout = null;
             this.updateOverlay();
         });

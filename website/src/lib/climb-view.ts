@@ -60,3 +60,15 @@ export function cycleClimbScreen(): void {
  * panel would otherwise flash away the moment you moved to read it.
  */
 export const climbCursorKm = writable<number | undefined>(undefined);
+
+/**
+ * Whether a finger is on the profile at this moment.
+ *
+ * Walking, the screen belongs to where you are; there is no use in a panel
+ * that quietly starts describing somewhere else. But halfway up the second of
+ * three climbs the question "what does the last one look like" is a real one,
+ * and the answer should not cost you the screen you were reading. So while a
+ * finger is held on the profile the screen follows it, and the moment it lifts
+ * the screen is back where your feet are.
+ */
+export const climbCursorHeld = writable(false);

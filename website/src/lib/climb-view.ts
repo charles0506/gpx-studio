@@ -17,6 +17,12 @@ export type ClimbScreenMode = 'off' | 'auto' | 'on';
 const MODES: ClimbScreenMode[] = ['off', 'auto', 'on'];
 const STORAGE_KEY = 'climb-screen';
 
+// Up from the start. Waiting for a fix means somebody opening a route at the
+// table — or arriving on a shared link — sees a map with no sign that the
+// screen exists, and the question it answers, how steep and how much is left,
+// is the one being asked before the walk as much as during it.
+const DEFAULT_MODE: ClimbScreenMode = 'on';
+
 // Kept in the browser rather than in the app's own settings: those live in
 // IndexedDB and re-emit a new object after every write, which an effect reading
 // them and writing anything in response turns into an update-depth loop.
@@ -29,11 +35,11 @@ function remembered(): ClimbScreenMode {
     } catch {
         // A private window, or site data blocked: the default will do.
     }
-    return 'auto';
+    return DEFAULT_MODE;
 }
 
 export const climbScreen = writable<ClimbScreenMode>(
-    typeof localStorage === 'undefined' ? 'auto' : remembered()
+    typeof localStorage === 'undefined' ? DEFAULT_MODE : remembered()
 );
 
 climbScreen.subscribe((mode) => {

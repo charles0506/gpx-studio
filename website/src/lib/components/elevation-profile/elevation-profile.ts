@@ -982,12 +982,9 @@ export class ElevationProfile {
             return;
         }
         // Sitting at home, the nearest point of a route in the hills is one of
-        // its ends, and a marker there says you are standing on it. So no
-        // marker — but the height still holds wherever you are standing, and
-        // on the way to a trailhead it is the one thing worth knowing: how
-        // far below the ridge you still are.
+        // its ends, and a marker there says you are standing on it. The panel
+        // on the map says how far off you are; this says nothing at all.
         if (progress.offRouteMeters > OFF_ROUTE_METERS) {
-            this.drawLiveAltitude();
             return;
         }
 
@@ -1124,44 +1121,6 @@ export class ElevationProfile {
     }
 
     /**
-     * How high the receiver says you are, when the route cannot place you.
-     *
-     * A line across the profile at your own height: everything above it is
-     * still to climb, everything below is under you. Off the route that is
-     * all the profile can honestly say, and it is not nothing — it answers
-     * "how much of this is left" from the car park as well as from the ridge.
-     */
-    private drawLiveAltitude() {
-        const altitude = get(livePosition)?.altitude;
-        const context = this._overlay.getContext('2d');
-        if (altitude === undefined || !this._chart || !context) {
-            return;
-        }
-
-        const converted = getConvertedElevation(altitude, get(distanceUnits));
-        const y = this._chart.scales.y.getPixelForValue(converted);
-        const { top, bottom, left, right } = this._chart.chartArea;
-        // Off the bottom or the top of the chart it would be a line drawn on
-        // the axis labels, saying nothing.
-        if (!Number.isFinite(y) || y < top || y > bottom) {
-            return;
-        }
-
-        context.save();
-        context.setLineDash([5, 4]);
-        context.strokeStyle = '#f59e0b';
-        context.lineWidth = 2;
-        context.beginPath();
-        context.moveTo(left, y);
-        context.lineTo(right, y);
-        context.stroke();
-        context.setLineDash([]);
-
-        this.chip(context, getElevationWithUnits(converted, false), left, y, '#b45309');
-        context.restore();
-    }
-
-    /**
      * What is under the cursor, written on the axes it belongs to.
      *
      * Height goes on the height axis and distance on the distance axis, where
@@ -1193,42 +1152,34 @@ export class ElevationProfile {
         context.stroke();
         context.setLineDash([]);
 
+        const chip = (text: string, atX: number, atY: number, colour: string) => {
+            context.font = '600 11px system-ui, sans-serif';
+            const width = context.measureText(text).width + 10;
+            const height = 17;
+            // Kept inside the canvas: at either end of the route the label
+            // would otherwise hang off the edge and be cut in half.
+            const left = Math.min(Math.max(atX - width / 2, 1), this._overlay.width - width - 1);
+            const top = Math.min(Math.max(atY - height / 2, 1), this._overlay.height - height - 1);
+            context.fillStyle = colour;
+            context.beginPath();
+            context.roundRect(left, top, width, height, 4);
+            context.fill();
+            context.fillStyle = 'white';
+            context.textBaseline = 'middle';
+            context.textAlign = 'center';
+            context.fillText(text, left + width / 2, top + height / 2 + 0.5);
+        };
+
         const ink = 'rgba(15, 23, 42, 0.88)';
-        this.chip(context, getElevationWithUnits(readout.y, false), area.left, y, ink);
-        this.chip(context, getDistanceWithUnits(readout.x, false), x, area.bottom + 10, ink);
-        this.chip(
-            context,
+        chip(getElevationWithUnits(readout.y, false), area.left, y, ink);
+        chip(getDistanceWithUnits(readout.x, false), x, area.bottom + 10, ink);
+        chip(
             `${readout.slope.toFixed(1)} %`,
             x,
             area.top + 10,
             gradientColour(Math.abs(readout.slope), readout.slope >= 0 ? 'climb' : 'descent')
         );
         context.restore();
-    }
-
-    /** A small filled label, kept whole inside the canvas. */
-    private chip(
-        context: CanvasRenderingContext2D,
-        text: string,
-        atX: number,
-        atY: number,
-        colour: string
-    ) {
-        context.font = '600 11px system-ui, sans-serif';
-        const width = context.measureText(text).width + 10;
-        const height = 17;
-        // At either end of the route the label would otherwise hang off the
-        // edge and be cut in half.
-        const left = Math.min(Math.max(atX - width / 2, 1), this._overlay.width - width - 1);
-        const top = Math.min(Math.max(atY - height / 2, 1), this._overlay.height - height - 1);
-        context.fillStyle = colour;
-        context.beginPath();
-        context.roundRect(left, top, width, height, 4);
-        context.fill();
-        context.fillStyle = 'white';
-        context.textBaseline = 'middle';
-        context.textAlign = 'center';
-        context.fillText(text, left + width / 2, top + height / 2 + 0.5);
     }
 
     slopeFillCallback(context: ScriptableLineSegmentContext & { p0: { raw: any } }) {

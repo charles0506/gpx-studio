@@ -1,18 +1,10 @@
 <script lang="ts">
     import { Button } from '$lib/components/ui/button';
     import { Input } from '$lib/components/ui/input';
-    import {
-        CloudUpload,
-        Cloud,
-        HardDriveDownload,
-        LoaderCircle,
-        RefreshCw,
-        Trash2,
-    } from '@lucide/svelte';
+    import { CloudUpload, Cloud, LoaderCircle, RefreshCw, Trash2 } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { passphrase } from '$lib/sync';
     import {
-        downloadAllRoutes,
         listRoutes,
         openRoute,
         removeRoute,
@@ -32,8 +24,8 @@
     let busy = $state(false);
     let error: string | undefined = $state(undefined);
     let loaded = $state(false);
-    // How far a download of the whole shelf has got. It is one request per
-    // route, so on a shelf of thirty it is worth saying so.
+    // How far shelving the whole desk has got. It is one request per route,
+    // so with thirty of them it is worth saying so.
     let working: string | undefined = $state(undefined);
 
     let hasSelection = $derived($selection ? $selection.size > 0 : false);
@@ -107,24 +99,6 @@
             >
                 <CloudUpload size="12" />
             </Button>
-            <Button
-                variant="ghost"
-                class="w-6 h-6 p-0"
-                disabled={busy || routes.length === 0}
-                title={i18n._('library.download_all')}
-                onclick={() =>
-                    run(async () => {
-                        try {
-                            await downloadAllRoutes((done, total) => {
-                                working = `${done}/${total}`;
-                            });
-                        } finally {
-                            working = undefined;
-                        }
-                    }, false)}
-            >
-                <HardDriveDownload size="12" />
-            </Button>
         {/if}
     </div>
 
@@ -176,7 +150,7 @@
 
     {#if working}
         <span class="text-[10px] text-muted-foreground px-1 tabular-nums">
-            {i18n._('library.working')}
+            {i18n._('library.uploading')}
             {working}
         </span>
     {/if}

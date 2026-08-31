@@ -32,6 +32,7 @@ import { settings } from '$lib/logic/settings';
 import { getClosestLinePoint, getClosestTrackSegments, getElevation } from '$lib/utils';
 import { gpxStatistics } from '$lib/logic/statistics';
 import { boundsManager } from './bounds';
+import { routeColors } from '$lib/assets/route-colors';
 
 // Generate unique file ids, different from the ones in the database
 export function getFileIds(n: number) {
@@ -709,6 +710,26 @@ export const fileActions = {
         fileActionManager.applyToFile(fileId, (file) =>
             file.replaceWaypoints(waypointIndex, waypointIndex, [])
         );
+    },
+    /**
+     * Deal the palette out again across everything open.
+     *
+     * A colour, once given, stays with the route — which is right, and
+     * leaves a shelf of routes coloured by whatever list was in force when
+     * each was first opened. Changing them one at a time through the style
+     * dialog is a chore in proportion to how many you have.
+     */
+    reassignColors: () => {
+        fileActionManager.applyGlobal((draft) => {
+            get(settings.fileOrder).forEach((fileId: string, index: number) => {
+                const file = draft.get(fileId);
+                if (file) {
+                    file.setStyle({
+                        'gpx_style:color': routeColors[index % routeColors.length],
+                    });
+                }
+            });
+        });
     },
     setStyleToSelection: (style: LineStyleExtension) => {
         if (get(selection).size === 0) {

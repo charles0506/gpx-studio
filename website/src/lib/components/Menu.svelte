@@ -50,6 +50,7 @@
         Maximize2,
         Minimize2,
         RefreshCw,
+        Palette,
         ZoomIn,
         ZoomOut,
     } from '@lucide/svelte';
@@ -426,6 +427,10 @@
                     </Menubar.Item>
                     <Menubar.Item inset onclick={resetFont}>
                         {i18n._('menu.font_reset')}
+                    </Menubar.Item>
+                    <Menubar.Separator />
+                    <Menubar.Item inset onclick={() => fileActions.reassignColors()}>
+                        <Palette size="16" />{i18n._('menu.recolor')}
                     </Menubar.Item>
                     <Menubar.Separator />
                     <Menubar.CheckboxItem bind:checked={$offlineAutoDownload}>

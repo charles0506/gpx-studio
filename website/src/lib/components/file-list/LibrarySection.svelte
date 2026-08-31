@@ -4,16 +4,8 @@
     import { CloudUpload, Cloud, LoaderCircle, RefreshCw, Trash2 } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { passphrase } from '$lib/sync';
-    import {
-        listRoutes,
-        openRoute,
-        removeRoute,
-        shelveAll,
-        shelveSelection,
-        type LibraryEntry,
-    } from '$lib/library';
+    import { listRoutes, openRoute, removeRoute, shelveAll, type LibraryEntry } from '$lib/library';
     import { settings } from '$lib/logic/settings';
-    import { selection } from '$lib/logic/selection';
 
     // The shelf sits under the open files rather than behind a dialog: picking
     // the route for the day is the same act as picking one already open, and it
@@ -38,10 +30,10 @@
         noticeTimer = setTimeout(() => (notice = undefined), 5000);
     }
 
-    let hasSelection = $derived($selection ? $selection.size > 0 : false);
-    // Nothing picked out means everything: selecting ten routes one at a
-    // time on a phone, to protect them from storage that may be cleared
-    // without warning, is a chore nobody does twice.
+    // One press sends the lot. It used to send the selection when there was
+    // one and everything otherwise, which read well and worked badly:
+    // opening a file selects it, so the selection is almost never empty and
+    // the button almost never did the thing it was there for.
     let openFiles = $derived($fileOrder.length);
 
     async function run(action: () => Promise<void>, refresh = true) {
@@ -90,21 +82,17 @@
             <Button
                 variant="ghost"
                 class="w-6 h-6 p-0"
-                disabled={busy || (!hasSelection && openFiles === 0)}
-                title={hasSelection ? i18n._('library.shelve') : i18n._('library.shelve_all')}
+                disabled={busy || openFiles === 0}
+                title={i18n._('library.shelve_all')}
                 onclick={() =>
                     run(async () => {
                         let saved;
-                        if (hasSelection) {
-                            saved = await shelveSelection();
-                        } else {
-                            try {
-                                saved = await shelveAll((done, count) => {
-                                    working = `${done}/${count}`;
-                                });
-                            } finally {
-                                working = undefined;
-                            }
+                        try {
+                            saved = await shelveAll((done, count) => {
+                                working = `${done}/${count}`;
+                            });
+                        } finally {
+                            working = undefined;
                         }
                         // The list is rebuilt from what was actually
                         // written, not by asking the shelf again: that

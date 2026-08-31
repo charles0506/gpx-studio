@@ -80,27 +80,6 @@ export async function shelveAll(
     return shelveFiles(fileIds, onProgress);
 }
 
-export async function shelveSelection(): Promise<LibraryEntry[]> {
-    const selected = new Set(
-        get(selection)
-            .getSelected()
-            .map((item: any) => (item.getFileId ? item.getFileId() : undefined))
-            .filter((id: string | undefined): id is string => id !== undefined)
-    );
-    if (selected.size === 0) {
-        throw new Error('nothing selected');
-    }
-    return shelveFiles([...selected]);
-}
-
-/**
- * Shelve some files, and hand back the entries that were written.
- *
- * Handed back rather than left to be discovered in the next listing: that
- * listing is eventually consistent, so reading it straight after a write
- * returns the shelf as it was before — and the route just uploaded appears
- * to have gone nowhere.
- */
 async function shelveFiles(
     fileIds: string[],
     onProgress?: (done: number, total: number) => void

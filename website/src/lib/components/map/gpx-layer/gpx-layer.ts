@@ -232,7 +232,18 @@ export class GPXLayer {
                                 19,
                                 ['get', 'width'],
                             ],
-                            'line-opacity': ['get', 'opacity'],
+                            // Zoomed in, the route thins out to let the map
+                            // through. At the scale where you are working out
+                            // which of two paths to take, the paths are what
+                            // the basemap draws — and a solid line laid over
+                            // them hides the very thing being decided. Far out
+                            // there is nothing under it worth reading, so it
+                            // stays as set.
+                            'line-opacity': [
+                                '*',
+                                ['get', 'opacity'],
+                                ['interpolate', ['linear'], ['zoom'], 15, 1, 17, 0.75, 19, 0.55],
+                            ],
                         },
                     },
                     ANCHOR_LAYER_KEY.tracks

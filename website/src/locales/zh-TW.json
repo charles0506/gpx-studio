@@ -92,7 +92,8 @@
         "center": "置中",
         "open_in": "打開於",
         "copy_coordinates": "複製座標",
-        "edit_osm": "在 OpenStreetMap 中編輯"
+        "edit_osm": "在 OpenStreetMap 中編輯",
+        "open_failed": "無法開啟"
     },
     "toolbar": {
         "routing": {

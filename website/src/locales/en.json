@@ -92,7 +92,8 @@
         "center": "Center",
         "open_in": "Open in",
         "copy_coordinates": "Copy coordinates",
-        "edit_osm": "Edit in OpenStreetMap"
+        "edit_osm": "Edit in OpenStreetMap",
+        "open_failed": "Could not open"
     },
     "toolbar": {
         "routing": {

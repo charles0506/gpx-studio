@@ -28,6 +28,7 @@ import {
     type WaypointType,
 } from 'gpx';
 import { get } from 'svelte/store';
+import { toast } from 'svelte-sonner';
 import { settings } from '$lib/logic/settings';
 import { getClosestLinePoint, getClosestTrackSegments, getElevation } from '$lib/utils';
 import { gpxStatistics } from '$lib/logic/statistics';
@@ -74,27 +75,71 @@ export function createFile() {
     currentTool.set(Tool.ROUTING);
 }
 
+/**
+ * iPads and iPhones run one browser engine wearing several coats: Chrome, Edge
+ * and Firefox there are all WebKit, so anything the file picker refuses in one
+ * of them it refuses in all of them, Safari included.
+ *
+ * Two things it refuses. It resolves `accept` through the system's type
+ * registry, and no app on a stock iPad claims `.gpx`, so every route in Files
+ * greys out and the picker becomes a wall you cannot get past. And it will not
+ * open at all for an input that is not in the document — a detached element, or
+ * one hidden with `display: none`, silently swallows the click.
+ */
+function isWebKitMobile() {
+    if (typeof navigator === 'undefined') {
+        return false;
+    }
+    // An iPad has reported itself as a Mac since iPadOS 13; the touch points
+    // are what still tell the two apart.
+    return (
+        /iP(ad|hone|od)/.test(navigator.userAgent) ||
+        (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1)
+    );
+}
+
 export function triggerFileInput() {
     const input = document.createElement('input');
     input.type = 'file';
-    input.accept = '.gpx';
+    if (!isWebKitMobile()) {
+        input.accept = '.gpx';
+    }
     input.multiple = true;
-    input.className = 'hidden';
+    // Present to the layout, invisible to the eye: the picker needs the first,
+    // and nobody wants the second.
+    input.style.position = 'fixed';
+    input.style.left = '-9999px';
+    input.style.opacity = '0';
     input.onchange = () => {
         if (input.files) {
             loadFiles(input.files);
         }
+        input.remove();
     };
+    document.body.appendChild(input);
     input.click();
 }
 
 export async function loadFiles(list: FileList | File[]) {
     let files: GPXFile[] = [];
+    let failed: string[] = [];
     for (let i = 0; i < list.length; i++) {
         let file = await loadFile(list[i]);
         if (file) {
             files.push(file);
+        } else {
+            failed.push(list[i].name);
         }
+    }
+
+    // A file that will not open used to do nothing whatsoever, which leaves you
+    // pressing the same button harder and no wiser.
+    if (failed.length > 0) {
+        toast.error(`${i18n._('menu.open_failed')}: ${failed.join(', ')}`);
+    }
+
+    if (files.length === 0) {
+        return;
     }
 
     let ids = fileActions.addMultiple(files);
@@ -106,21 +151,41 @@ export async function loadFile(file: File): Promise<GPXFile | null> {
     let result = await new Promise<GPXFile | null>((resolve) => {
         const reader = new FileReader();
         reader.onload = () => {
-            let data = reader.result?.toString() ?? null;
-            if (data) {
-                let gpx = parseGPX(data);
-                if (gpx.metadata === undefined) {
-                    gpx.metadata = {};
+            try {
+                let data = reader.result?.toString() ?? null;
+                if (data) {
+                    let gpx = parseGPX(data);
+                    if (gpx.metadata === undefined) {
+                        gpx.metadata = {};
+                    }
+                    if (gpx.metadata.name === undefined || gpx.metadata.name.trim() === '') {
+                        gpx.metadata.name = file.name.split('.').slice(0, -1).join('.');
+                    }
+                    resolve(gpx);
+                } else {
+                    resolve(null);
                 }
-                if (gpx.metadata.name === undefined || gpx.metadata.name.trim() === '') {
-                    gpx.metadata.name = file.name.split('.').slice(0, -1).join('.');
-                }
-                resolve(gpx);
-            } else {
+            } catch (e) {
+                // Without this the throw escapes into the reader's callback and
+                // the promise is never settled at all, so the open silently
+                // waits forever.
+                console.error('[open]', file.name, e);
                 resolve(null);
             }
         };
-        reader.readAsText(file);
+        // Reading can fail on its own — a file still coming down from iCloud,
+        // or one the browser has lost permission to.
+        reader.onerror = () => {
+            console.error('[open]', file.name, reader.error);
+            resolve(null);
+        };
+        reader.onabort = () => resolve(null);
+        try {
+            reader.readAsText(file);
+        } catch (e) {
+            console.error('[open]', file.name, e);
+            resolve(null);
+        }
     });
     return result;
 }

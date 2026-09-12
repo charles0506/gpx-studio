@@ -154,6 +154,39 @@ export class MapLibreGLMap {
                 trackUserLocation: true,
             });
 
+            // Every fix, MapLibre re-fits the camera to a box drawn round the
+            // accuracy circle. That is how the control is meant to work, and
+            // it means the zoom you chose survives only until the receiver
+            // reports again: lean in to read which side of the stream the path
+            // crosses, and a few seconds later you are back at zoom 15 looking
+            // at the hillside.
+            //
+            // The framing is worth having exactly once — the first fix, when
+            // the map may still be showing half of Taiwan. After that the zoom
+            // is yours and the camera only follows you across it.
+            const control = geolocateControl as unknown as {
+                _updateCamera: (position: GeolocationPosition) => void;
+            };
+            const frameOnFirstFix = control._updateCamera;
+            let framed = false;
+            control._updateCamera = (position: GeolocationPosition) => {
+                if (!framed) {
+                    framed = true;
+                    frameOnFirstFix(position);
+                    return;
+                }
+                map.easeTo(
+                    {
+                        center: [position.coords.longitude, position.coords.latitude],
+                        bearing: map.getBearing(),
+                        duration: 0,
+                    },
+                    // Without this the control takes its own camera move for a
+                    // pan of yours and stops following you.
+                    { geolocateSource: true }
+                );
+            };
+
             // Feed the elevation profile from the control that is already
             // watching, rather than opening a second watcher: one permission
             // prompt, one battery cost, and the dot on the map and the marker on

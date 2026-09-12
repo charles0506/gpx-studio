@@ -150,6 +150,12 @@ export class ElevationProfile {
             livePosition.subscribe(() => {
                 this.updateOverlay();
             });
+            // Lifting a finger hands the axes back to where you are, and the
+            // next fix may be half a minute away — too long to leave the
+            // numbers describing somewhere you stopped asking about.
+            climbCursorHeld.subscribe(() => {
+                this.updateOverlay();
+            });
             this._additionalDatasets.subscribe(() => {
                 this.updateDataVisibility();
             });
@@ -1145,7 +1151,63 @@ export class ElevationProfile {
     }
 
     /**
-     * What is under the cursor, written on the axes it belongs to.
+     * The profile's own point, by distance along the route.
+     *
+     * The data is in order, so this is a bisection rather than a scan: it runs
+     * on every fix, and a long day's track is tens of thousands of points.
+     */
+    private pointAtKm(km: number): ElevationProfilePoint | undefined {
+        const data = this._chart?.data.datasets[0]?.data as ElevationProfilePoint[] | undefined;
+        if (!data || data.length === 0) {
+            return undefined;
+        }
+        let low = 0;
+        let high = data.length - 1;
+        while (low < high) {
+            const middle = (low + high) >> 1;
+            if (data[middle].km < km) {
+                low = middle + 1;
+            } else {
+                high = middle;
+            }
+        }
+        const after = data[low];
+        const before = data[low - 1];
+        if (before && Math.abs(before.km - km) < Math.abs(after.km - km)) {
+            return before;
+        }
+        return after;
+    }
+
+    /**
+     * Where you are, as a reading.
+     *
+     * Walking, the numbers on the axes should be about your feet. They used to
+     * be about wherever the chart was last touched, which does not move while
+     * you do — so an hour up the hill the profile was still reporting the
+     * height of the place you had prodded at the trailhead, next to a marker
+     * showing the truth. Two answers on one chart, one of them stale.
+     */
+    private liveReadout(): { x: number; y: number; slope: number } | null {
+        // A finger on the chart is a question about somewhere else, and it
+        // outranks the fix for as long as it is held.
+        if (get(climbCursorHeld)) {
+            return null;
+        }
+        const progress = progressAlongRoute(get(livePosition));
+        if (!progress || progress.offRouteMeters > OFF_ROUTE_METERS) {
+            return null;
+        }
+        const point = this.pointAtKm(progress.km);
+        if (!point) {
+            return null;
+        }
+        return { x: point.x, y: point.y, slope: point.slope.at };
+    }
+
+    /**
+     * What is under the cursor — or under your feet — written on the axes it
+     * belongs to.
      *
      * Height goes on the height axis and distance on the distance axis, where
      * the eye is already looking to read them. The gradient has no axis of its
@@ -1153,7 +1215,8 @@ export class ElevationProfile {
      * of the ground it describes.
      */
     private drawReadout() {
-        const readout = this._readout;
+        const live = this.liveReadout();
+        const readout = live ?? this._readout;
         const context = this._overlay.getContext('2d');
         if (!readout || !this._chart || !context) {
             return;
@@ -1167,14 +1230,18 @@ export class ElevationProfile {
         }
 
         context.save();
-        context.setLineDash([3, 3]);
-        context.strokeStyle = 'rgba(15, 23, 42, 0.45)';
-        context.lineWidth = 1;
-        context.beginPath();
-        context.moveTo(x, area.top);
-        context.lineTo(x, area.bottom);
-        context.stroke();
-        context.setLineDash([]);
+        // Where you are already has a line drawn down it, in amber. A second
+        // one in grey on top of it says nothing and hides the first.
+        if (!live) {
+            context.setLineDash([3, 3]);
+            context.strokeStyle = 'rgba(15, 23, 42, 0.45)';
+            context.lineWidth = 1;
+            context.beginPath();
+            context.moveTo(x, area.top);
+            context.lineTo(x, area.bottom);
+            context.stroke();
+            context.setLineDash([]);
+        }
 
         const chip = (text: string, atX: number, atY: number, colour: string) => {
             context.font = '600 11px system-ui, sans-serif';
@@ -1194,7 +1261,10 @@ export class ElevationProfile {
             context.fillText(text, left + width / 2, top + height / 2 + 0.5);
         };
 
-        const ink = 'rgba(15, 23, 42, 0.88)';
+        // Amber for your own readings, to match the marker they belong to, so
+        // that a glance says whether the numbers are you or somewhere you
+        // asked about.
+        const ink = live ? '#b45309' : 'rgba(15, 23, 42, 0.88)';
         chip(getElevationWithUnits(readout.y, false), area.left, y, ink);
         chip(getDistanceWithUnits(readout.x, false), x, area.bottom + 10, ink);
         chip(

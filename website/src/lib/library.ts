@@ -106,10 +106,10 @@ async function shelveFiles(
     // touched since it was last put there is not sent again. Shelving a
     // whole desk is mostly re-shelving: on a phone, on a hill, the ones
     // worth spending the connection on are the ones that changed.
-    const existing = new Map<string, string | undefined>();
+    const existing = new Map<string, { hash?: string; name?: string }>();
     try {
         for (const route of await listRoutes()) {
-            existing.set(route.id, route.hash);
+            existing.set(route.id, { hash: route.hash, name: route.name });
         }
     } catch (error) {
         // The shelf could not be listed. Everything is sent, which is
@@ -132,9 +132,15 @@ async function shelveFiles(
             .getStatistics(fileId)
             ?.getStatisticsFor(new ListFileItem(fileId))?.global;
         const gpx = buildGPX(file, []);
-        const id = idFor(name);
+        // A route already on the shelf under the old kind of id keeps it, so
+        // that it is replaced rather than stored a second time — but only if
+        // the route there has this very name. Under the old id a different
+        // route entirely can be sitting at that key, and writing over it is
+        // the bug this is here to stop.
+        const legacy = legacyIdFor(name);
+        const id = existing.get(legacy)?.name === name ? legacy : idFor(name);
         const hash = await fingerprint(gpx);
-        if (existing.get(id) === hash) {
+        if (existing.get(id)?.hash === hash) {
             continue;
         }
         const km = global ? global.distance.total.toFixed(2) : '';
@@ -150,20 +156,34 @@ async function shelveFiles(
     return saved;
 }
 
-/**
- * A stable id from the name: saving a route again should replace the one on the
- * shelf, and a name is the only thing about a route that stays put across an
- * edit. Anything the key will not take becomes a dash.
- */
-function idFor(name: string): string {
-    const slug = Array.from(name)
+function slugOf(name: string): string {
+    return Array.from(name)
         .map((character) => (/[A-Za-z0-9_-]/.test(character) ? character : '-'))
         .join('')
         .replace(/-+/g, '-')
         .replace(/^-|-$/g, '')
         .slice(0, 40);
-    // Names in Chinese slug down to nothing, so they are given a short digest
-    // of the name instead of an empty id.
+}
+
+/**
+ * A stable id from the name: saving a route again should replace the one on the
+ * shelf, and a name is the only thing about a route that stays put across an
+ * edit.
+ *
+ * The readable part keeps only what a key will take, which for a name in
+ * Chinese is its digits and not much else — so the digest of the whole name
+ * always goes on the end. Without it `0906四獸山` and next year's `0906七星山`
+ * were both `0906`, `淡蘭南路2` was `2`, and shelving the second of any such
+ * pair silently replaced the first.
+ */
+function idFor(name: string): string {
+    const slug = slugOf(name);
+    return slug.length > 0 ? `${slug}-${digest(name)}` : `r${digest(name)}`;
+}
+
+/** The id routes were shelved under before, which collided. */
+function legacyIdFor(name: string): string {
+    const slug = slugOf(name);
     return slug.length > 0 ? slug : `r${digest(name)}`;
 }
 

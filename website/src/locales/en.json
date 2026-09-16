@@ -660,7 +660,8 @@
         "note": "Opening a route adds it to what is already open. Saving a route with the same name replaces it.",
         "loading": "Reading the library…",
         "timeout": "No answer from the library — the connection may be too weak. Try refresh.",
-        "offline": "Could not reach the library — check the connection."
+        "offline": "Could not reach the library — check the connection.",
+        "confirm_remove": "Delete?"
     },
     "share": {
         "opened": "routes came in from the link",

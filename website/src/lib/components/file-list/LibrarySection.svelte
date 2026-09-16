@@ -21,6 +21,22 @@
     // and saying "the library is empty" while the first read is still on
     // its way looks exactly like every route having vanished.
     let fetched = $state(false);
+
+    // The route a delete has been asked for, and not yet confirmed.
+    //
+    // The bin used to appear only on hover and act on the first press. A
+    // phone has no hover, so on one it was an invisible button at the end of
+    // every row that deleted a route the moment a thumb landed a little to
+    // the right of its name — with nothing on screen to say what had been
+    // pressed. It is the only way a route leaves the shelf. Now it is always
+    // visible where there is no hover, and the first press only asks.
+    let armed: string | undefined = $state(undefined);
+    let armTimer: ReturnType<typeof setTimeout> | undefined = undefined;
+    function arm(id: string) {
+        armed = id;
+        clearTimeout(armTimer);
+        armTimer = setTimeout(() => (armed = undefined), 4000);
+    }
     // How far shelving the whole desk has got. It is one request per route,
     // so with thirty of them it is worth saying so.
     let working: string | undefined = $state(undefined);
@@ -152,21 +168,34 @@
                         </span>
                     {/if}
                 </button>
-                <Button
-                    variant="ghost"
-                    class="w-6 h-6 p-0 shrink-0 opacity-0 group-hover:opacity-100 focus:opacity-100"
-                    disabled={busy}
-                    title={i18n._('library.remove')}
-                    onclick={() =>
-                        run(async () => {
-                            await removeRoute(route.id);
-                            // Dropped here rather than by re-reading: the listing is
-                            // eventually consistent, so it would hand the route back.
-                            routes = routes.filter((other) => other.id !== route.id);
-                        }, false)}
-                >
-                    <Trash2 size="12" />
-                </Button>
+                {#if armed === route.id}
+                    <Button
+                        variant="destructive"
+                        class="h-6 px-2 shrink-0 text-[10px]"
+                        disabled={busy}
+                        onclick={() => {
+                            armed = undefined;
+                            run(async () => {
+                                await removeRoute(route.id);
+                                // Dropped here rather than by re-reading: the listing is
+                                // eventually consistent, so it would hand the route back.
+                                routes = routes.filter((other) => other.id !== route.id);
+                            }, false);
+                        }}
+                    >
+                        {i18n._('library.confirm_remove')}
+                    </Button>
+                {:else}
+                    <Button
+                        variant="ghost"
+                        class="w-6 h-6 p-0 shrink-0 [@media(hover:hover)]:opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        disabled={busy}
+                        title={i18n._('library.remove')}
+                        onclick={() => arm(route.id)}
+                    >
+                        <Trash2 size="12" />
+                    </Button>
+                {/if}
             </div>
         {:else}
             {#if fetched}

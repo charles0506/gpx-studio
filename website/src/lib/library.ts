@@ -33,14 +33,32 @@ async function request(method: 'GET' | 'PUT' | 'DELETE', id?: string, body?: str
         throw new Error('missing passphrase');
     }
 
-    const response = await fetch(`/api/library${id === undefined ? '' : `?id=${id}`}`, {
-        method,
-        headers: {
-            Authorization: `Bearer ${secret}`,
-            ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
-        },
-        body,
-    });
+    // A phone on a hillside can hold a request open with no answer for as
+    // long as it likes, and a request with no end leaves a spinner with no
+    // end. Long enough for one bar of signal to get a route through; short
+    // enough that giving up says something before you have given up on it.
+    const controller = new AbortController();
+    // Sending a route is a few hundred kilobytes; reading the list is a few.
+    const timer = setTimeout(() => controller.abort(), method === 'PUT' ? 60000 : 15000);
+    let response: Response;
+    try {
+        response = await fetch(`/api/library${id === undefined ? '' : `?id=${id}`}`, {
+            method,
+            headers: {
+                Authorization: `Bearer ${secret}`,
+                ...(body === undefined ? {} : { 'Content-Type': 'application/json' }),
+            },
+            body,
+            signal: controller.signal,
+        });
+    } catch (e) {
+        if (controller.signal.aborted) {
+            throw new Error('library.timeout');
+        }
+        throw new Error('library.offline');
+    } finally {
+        clearTimeout(timer);
+    }
 
     const data = await response.json().catch(() => ({}));
     if (!response.ok) {

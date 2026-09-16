@@ -16,6 +16,11 @@
     let busy = $state(false);
     let error: string | undefined = $state(undefined);
     let loaded = $state(false);
+    // Whether the shelf has ever actually been read. Until it has, an empty
+    // list is not an empty shelf — it is a question with no answer yet —
+    // and saying "the library is empty" while the first read is still on
+    // its way looks exactly like every route having vanished.
+    let fetched = $state(false);
     // How far shelving the whole desk has got. It is one request per route,
     // so with thirty of them it is worth saying so.
     let working: string | undefined = $state(undefined);
@@ -43,9 +48,11 @@
             await action();
             if (refresh) {
                 routes = await listRoutes();
+                fetched = true;
             }
         } catch (e) {
-            error = e instanceof Error ? e.message : String(e);
+            const message = e instanceof Error ? e.message : String(e);
+            error = message.startsWith('library.') ? i18n._(message) : message;
         } finally {
             busy = false;
         }
@@ -162,7 +169,11 @@
                 </Button>
             </div>
         {:else}
-            <span class="text-xs text-muted-foreground px-1">{i18n._('library.empty')}</span>
+            {#if fetched}
+                <span class="text-xs text-muted-foreground px-1">{i18n._('library.empty')}</span>
+            {:else if busy}
+                <span class="text-xs text-muted-foreground px-1">{i18n._('library.loading')}</span>
+            {/if}
         {/each}
     {/if}
 

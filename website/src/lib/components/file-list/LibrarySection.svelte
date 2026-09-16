@@ -4,7 +4,14 @@
     import { CloudUpload, Cloud, LoaderCircle, RefreshCw, Trash2 } from '@lucide/svelte';
     import { i18n } from '$lib/i18n.svelte';
     import { passphrase } from '$lib/sync';
-    import { listRoutes, openRoute, removeRoute, shelveAll, type LibraryEntry } from '$lib/library';
+    import {
+        lastListing,
+        listRoutes,
+        openRoute,
+        removeRoute,
+        shelveAll,
+        type LibraryEntry,
+    } from '$lib/library';
     import { settings } from '$lib/logic/settings';
 
     // The shelf sits under the open files rather than behind a dialog: picking
@@ -21,6 +28,10 @@
     // and saying "the library is empty" while the first read is still on
     // its way looks exactly like every route having vanished.
     let fetched = $state(false);
+    // Where the empty answer came from, said beside it. The shelf has been
+    // reported empty while its routes sat in storage; the host and the
+    // store are the two things that tell which way that went.
+    let source = $state('');
 
     // The route a delete has been asked for, and not yet confirmed.
     //
@@ -65,6 +76,7 @@
             if (refresh) {
                 routes = await listRoutes();
                 fetched = true;
+                source = `${location.host} · ${lastListing?.store ?? '?'}${lastListing?.shaped === false ? ' · not-api' : ''}`;
             }
         } catch (e) {
             const message = e instanceof Error ? e.message : String(e);
@@ -200,6 +212,7 @@
         {:else}
             {#if fetched}
                 <span class="text-xs text-muted-foreground px-1">{i18n._('library.empty')}</span>
+                <span class="text-[10px] text-muted-foreground px-1 break-all">{source}</span>
             {:else if busy}
                 <span class="text-xs text-muted-foreground px-1">{i18n._('library.loading')}</span>
             {/if}

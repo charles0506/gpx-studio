@@ -74,6 +74,10 @@ export async function onRequestGet({ request, env }) {
         if (env.SYNC_KV) {
             const listed = await env.SYNC_KV.list({ prefix: PREFIX });
             return json({
+                // Which store answered. An empty shelf with routes plainly
+                // sitting in storage is otherwise impossible to tell apart
+                // from a deployment reading a different one.
+                store: 'kv',
                 routes: listed.keys.map((key) => ({
                     id: key.name.slice(PREFIX.length),
                     ...(key.metadata ?? {}),
@@ -85,6 +89,7 @@ export async function onRequestGet({ request, env }) {
             include: ['customMetadata'],
         });
         return json({
+            store: 'r2',
             routes: listed.objects.map((object) => ({
                 id: object.key.slice(PREFIX.length),
                 ...(object.customMetadata ?? {}),

@@ -67,8 +67,17 @@ async function request(method: 'GET' | 'PUT' | 'DELETE', id?: string, body?: str
     return data;
 }
 
+/** Which store answered the last listing, and whether it answered as one. */
+export let lastListing: { store: string; shaped: boolean } | undefined = undefined;
+
 export async function listRoutes(): Promise<LibraryEntry[]> {
     const data = await request('GET');
+    lastListing = {
+        store: typeof data.store === 'string' ? data.store : '?',
+        // A 200 that is not the API's own answer — a page, a proxy, a stale
+        // cache — parses to nothing and used to read as an empty shelf.
+        shaped: Array.isArray(data.routes),
+    };
     const routes: LibraryEntry[] = data.routes ?? [];
     return routes.sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
 }

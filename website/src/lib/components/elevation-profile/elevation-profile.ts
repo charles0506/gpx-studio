@@ -93,6 +93,11 @@ export class ElevationProfile {
     private _overlay: HTMLCanvasElement;
     private _dragging = false;
     private _panning = false;
+    // When the chart was last worked by hand. Following the fix waits a
+    // little after that: double-tapping the next climb to look at it, only
+    // for the next fix to drag the view back to your feet, would make the
+    // gesture useless.
+    private _handledAt = 0;
 
     private _gpxStatistics: Readable<GPXStatisticsGroup>;
     private _slicedGPXStatistics: Writable<[GPXGlobalStatistics, number, number] | undefined>;
@@ -148,6 +153,7 @@ export class ElevationProfile {
                 this.updateData();
             });
             livePosition.subscribe(() => {
+                this.followLivePosition();
                 this.updateOverlay();
             });
             // Lifting a finger hands the axes back to where you are, and the
@@ -352,6 +358,7 @@ export class ElevationProfile {
                         },
                         onPanComplete: () => {
                             this._panning = false;
+                            this._handledAt = Date.now();
                         },
                     },
                     zoom: {
@@ -379,6 +386,9 @@ export class ElevationProfile {
                             }
 
                             this._slicedGPXStatistics.set(undefined);
+                        },
+                        onZoomComplete: () => {
+                            this._handledAt = Date.now();
                         },
                     },
                     limits: {
@@ -692,6 +702,7 @@ export class ElevationProfile {
         // still gets its turn.
         this._onPointerGone = (evt: PointerEvent) => {
             fingers.delete(evt.pointerId);
+            this._handledAt = Date.now();
             stopEdgeScroll();
             lastMidpoint = midpoint();
             if (fingers.size === 0) {
@@ -945,6 +956,7 @@ export class ElevationProfile {
         if (!this._chart) {
             return;
         }
+        this._handledAt = Date.now();
         if ((this._chart.getZoomLevel() ?? 1) > 1.01) {
             this._chart.resetZoom();
             return;
@@ -1148,6 +1160,49 @@ export class ElevationProfile {
         this.drawClimbs();
         this.drawLivePosition();
         this.drawReadout();
+    }
+
+    /**
+     * Hold the walker in the middle of a zoomed-in profile.
+     *
+     * Zoomed out the whole route is on screen and there is nothing to follow.
+     * Zoomed in there is: the part of the route you can see is a window, and
+     * walking out of it leaves the chart showing ground you left behind, with
+     * the marker pinned to an edge or gone altogether. The window now travels
+     * with you, which is the arrangement every watch uses.
+     */
+    private followLivePosition() {
+        if (!this._chart || this._dragging || this._panning || get(climbCursorHeld)) {
+            return;
+        }
+        // Fifteen seconds of quiet after the last gesture. Long enough to read
+        // the climb you just zoomed to, short enough that walking on hands the
+        // chart back without asking.
+        if (Date.now() - this._handledAt < 15000) {
+            return;
+        }
+        if ((this._chart.getZoomLevel() ?? 1) <= 1.01) {
+            return;
+        }
+        const progress = progressAlongRoute(get(livePosition));
+        if (!progress || progress.offRouteMeters > OFF_ROUTE_METERS) {
+            return;
+        }
+        const scale = this._chart.scales.x;
+        const here = getConvertedDistance(progress.km, get(distanceUnits));
+        const middle = (scale.min + scale.max) / 2;
+        // Already as good as centred: panning by a pixel every few seconds is
+        // a chart that will not sit still.
+        if (Math.abs(here - middle) < (scale.max - scale.min) * 0.02) {
+            return;
+        }
+        const shift = scale.getPixelForValue(middle) - scale.getPixelForValue(here);
+        if (!Number.isFinite(shift) || shift === 0) {
+            return;
+        }
+        // At either end of the route the pan stops against the edge, which is
+        // right: there is no more route to put under the middle.
+        (this._chart as any).pan({ x: shift }, undefined, 'default');
     }
 
     /**

@@ -2,7 +2,7 @@ import { get, writable } from 'svelte/store';
 import { map } from '$lib/components/map/map';
 import { gpxStatistics } from '$lib/logic/statistics';
 import type { GPXStatisticsGroup } from 'gpx';
-import { TILE_CACHE } from '$lib/offline-limits';
+import { formerTileUrl, TILE_CACHE } from '$lib/offline-limits';
 import { i18n } from '$lib/i18n.svelte';
 import { toast } from 'svelte-sonner';
 
@@ -162,9 +162,14 @@ export async function missingTiles(urls: string[]): Promise<string[]> {
         const cache = await caches.open(TILE_CACHE);
         const missing: string[] = [];
         for (const url of urls) {
-            if (!(await cache.match(url))) {
-                missing.push(url);
+            if (await cache.match(url)) {
+                continue;
             }
+            const former = formerTileUrl(url);
+            if (former && (await cache.match(former))) {
+                continue;
+            }
+            missing.push(url);
         }
         return missing;
     } catch {

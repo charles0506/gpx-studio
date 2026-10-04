@@ -2,7 +2,7 @@
 /// <reference lib="webworker" />
 
 import { base, build, files, prerendered, version } from '$service-worker';
-import { MAX_TILE_ENTRIES, TILE_CACHE } from '$lib/offline-limits';
+import { formerTileUrl, MAX_TILE_ENTRIES, TILE_CACHE } from '$lib/offline-limits';
 
 // A hiker loses signal long before they lose interest in the map, so two
 // separate caches: the app itself, replaced wholesale on every deploy, and the
@@ -19,6 +19,7 @@ const APP_CACHE = `app-${version}`;
 const TILE_HOSTS = [
     'tiles.openfreemap.org',
     'tile.happyman.idv.tw',
+    'gpx-studio2.pages.dev',
     'tiles.mapterhorn.com',
     'tile.openstreetmap.org',
     'a.tile.openstreetmap.org',
@@ -124,6 +125,13 @@ async function handleTile(request: Request): Promise<Response> {
         if (cached) {
             return cached;
         }
+        const former = formerTileUrl(request.url);
+        if (former) {
+            const kept = await cache.match(former);
+            if (kept) {
+                return kept;
+            }
+        }
     } catch {
         // No cache to read from; the network is the only hope.
     }
@@ -214,7 +222,16 @@ sw.addEventListener('fetch', (event) => {
 
     const url = new URL(request.url);
 
-    if (TILE_HOSTS.includes(url.hostname)) {
+    // This site's own hostname is in that list for the sake of a page served
+    // from somewhere else — a development server — asking it for tiles. On
+    // the site itself only the tiles are map data; the rest is the app.
+    const ownTile = url.pathname.startsWith('/tiles/');
+    if (
+        url.origin === sw.location.origin
+            ? ownTile
+            : TILE_HOSTS.includes(url.hostname) &&
+              (url.hostname !== 'gpx-studio2.pages.dev' || ownTile)
+    ) {
         event.respondWith(handleTile(request));
         return;
     }

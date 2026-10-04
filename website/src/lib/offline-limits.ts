@@ -14,3 +14,24 @@ export const MAX_TILE_ENTRIES = 20000;
 
 /** The cache the worker keeps map data in, across deploys. */
 export const TILE_CACHE = 'map-data';
+
+/**
+ * 魯地圖 is asked for through this site, which answers from its own store of
+ * tiles when it has them and passes the request on when it does not.
+ */
+export const OWN_RUDY_TILES = 'https://gpx-studio2.pages.dev/tiles/rudy/';
+
+/** Where the same tiles used to be asked for, and are still cached under. */
+const UPSTREAM_RUDY_TILES = 'https://tile.happyman.idv.tw/map/rudy/';
+
+/**
+ * The address a tile was cached under before it was asked for through this
+ * site. Everything already downloaded for offline use is filed under the old
+ * one, and changing where the map is fetched from must not quietly turn all
+ * of that into tiles that have to be fetched again.
+ */
+export function formerTileUrl(url: string): string | undefined {
+    return url.startsWith(OWN_RUDY_TILES)
+        ? UPSTREAM_RUDY_TILES + url.slice(OWN_RUDY_TILES.length)
+        : undefined;
+}

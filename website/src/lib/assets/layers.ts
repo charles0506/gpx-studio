@@ -24,6 +24,7 @@ import {
 } from 'lucide-static';
 import { type RasterDEMSourceSpecification, type StyleSpecification } from 'maplibre-gl';
 import { radarSourceFor } from '$lib/cwa-radar';
+import { OWN_RUDY_TILES } from '$lib/offline-limits';
 import ignFrTopo from './custom/ign-fr-topo.json';
 import ignFrPlan from './custom/ign-fr-plan.json';
 import ignFrSatellite from './custom/ign-fr-satellite.json';
@@ -349,7 +350,10 @@ export const basemaps: { [key: string]: string | StyleSpecification } = {
         sources: {
             rudyMap: {
                 type: 'raster',
-                tiles: ['https://tile.happyman.idv.tw/map/rudy/{z}/{x}/{y}.png'],
+                // Through this site rather than straight to the server that
+                // draws them: it has its own copies of the tiles along the
+                // routes that matter, and hands everything else on.
+                tiles: [`${OWN_RUDY_TILES}{z}/{x}/{y}.png`],
                 tileSize: 256,
                 maxzoom: 20,
                 attribution:

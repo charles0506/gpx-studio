@@ -93,10 +93,10 @@ export class ElevationProfile {
     private _overlay: HTMLCanvasElement;
     private _dragging = false;
     private _panning = false;
-    // When the chart was last worked by hand. Following the fix waits a
-    // little after that: double-tapping the next climb to look at it, only
-    // for the next fix to drag the view back to your feet, would make the
-    // gesture useless.
+    // When the view was last slid somewhere else by hand. Following the fix
+    // waits a little after that, and only after that: a pause after every
+    // gesture meant that zooming in — the one moment you look to see whether
+    // the chart has found you — was always inside the pause.
     private _handledAt = 0;
 
     private _gpxStatistics: Readable<GPXStatisticsGroup>;
@@ -388,7 +388,8 @@ export class ElevationProfile {
                             this._slicedGPXStatistics.set(undefined);
                         },
                         onZoomComplete: () => {
-                            this._handledAt = Date.now();
+                            this.followLivePosition();
+                            this.updateOverlay();
                         },
                     },
                     limits: {
@@ -548,13 +549,14 @@ export class ElevationProfile {
             }
             edgeSpeed = 0;
         };
-        const zoomedIn = () => (this._chart?.getZoomLevel() ?? 1) > 1.01;
+        const zoomedIn = () => this.isZoomedIn();
         const edgeStep = () => {
             edgeFrame = undefined;
             if (edgeSpeed === 0 || !this._chart || !heldAt) {
                 return;
             }
             (this._chart as any).pan({ x: -edgeSpeed }, undefined, 'default');
+            this._handledAt = Date.now();
             // The view moved under a finger that did not, so the point being
             // read is a different one now.
             moveCursorTo(getIndexAt(heldAt.x, heldAt.y));
@@ -618,6 +620,9 @@ export class ElevationProfile {
                     const mid = midpoint();
                     if (mid !== undefined && lastMidpoint !== undefined && this._chart) {
                         (this._chart as any).pan({ x: mid - lastMidpoint }, undefined, 'default');
+                        if (Math.abs(mid - lastMidpoint) > 2) {
+                            this._handledAt = Date.now();
+                        }
                     }
                     lastMidpoint = mid;
                 }
@@ -702,11 +707,14 @@ export class ElevationProfile {
         // still gets its turn.
         this._onPointerGone = (evt: PointerEvent) => {
             fingers.delete(evt.pointerId);
-            this._handledAt = Date.now();
             stopEdgeScroll();
             lastMidpoint = midpoint();
             if (fingers.size === 0) {
                 climbCursorHeld.set(false);
+                // The next fix may be a while coming; the chart goes back to
+                // you now rather than then.
+                this.followLivePosition();
+                this.updateOverlay();
             }
         };
         window.addEventListener('pointerup', this._onPointerGone);
@@ -956,8 +964,7 @@ export class ElevationProfile {
         if (!this._chart) {
             return;
         }
-        this._handledAt = Date.now();
-        if ((this._chart.getZoomLevel() ?? 1) > 1.01) {
+        if (this.isZoomedIn()) {
             this._chart.resetZoom();
             return;
         }
@@ -982,6 +989,17 @@ export class ElevationProfile {
             },
             'default'
         );
+
+        // Asking for a climb you are not on is asking to look away from
+        // yourself, and gets a moment to do it in. Asking for the one under
+        // your feet does not: there the chart should simply find you.
+        const progress = progressAlongRoute(get(livePosition));
+        if (progress && (progress.km < from - margin || progress.km > to + margin)) {
+            this._handledAt = Date.now();
+        } else {
+            this.followLivePosition();
+            this.updateOverlay();
+        }
     }
     // Each climb and each descent gets a band along the foot of the chart,
     // coloured by how steep it is — the same read as a ClimbPro screen, in the
@@ -1171,17 +1189,40 @@ export class ElevationProfile {
      * the marker pinned to an edge or gone altogether. The window now travels
      * with you, which is the arrangement every watch uses.
      */
+    /**
+     * Whether less than the whole route is on screen.
+     *
+     * Asked of the distance axis directly. The zoom plugin has an answer of
+     * its own, and it is not about this: it takes every axis into account,
+     * the height axis included, and compares each with the range it had when
+     * the plugin first saw it — which for height is whatever an empty chart
+     * had. Load a route and the height axis is "zoomed out" for good, the
+     * plugin reports a level below one, and everything that waited for a
+     * level above one — following the fix, scrolling at the edges, the second
+     * double-tap that zooms back out — never ran.
+     */
+    private isZoomedIn(): boolean {
+        const scale = this._chart?.scales.x;
+        const dataset = this._chart?.data.datasets[0] as any;
+        const data = (dataset?._data ?? dataset?.data) as ElevationProfilePoint[] | undefined;
+        if (!scale || !data || data.length < 2) {
+            return false;
+        }
+        const whole = data[data.length - 1].x - data[0].x;
+        return whole > 0 && scale.max - scale.min < whole * 0.99;
+    }
+
     private followLivePosition() {
         if (!this._chart || this._dragging || this._panning || get(climbCursorHeld)) {
             return;
         }
-        // Fifteen seconds of quiet after the last gesture. Long enough to read
-        // the climb you just zoomed to, short enough that walking on hands the
-        // chart back without asking.
-        if (Date.now() - this._handledAt < 15000) {
+        // A few seconds of quiet after the view was slid away by hand. Long
+        // enough to read what you slid it to, short enough that walking on
+        // hands the chart back without asking.
+        if (Date.now() - this._handledAt < 8000) {
             return;
         }
-        if ((this._chart.getZoomLevel() ?? 1) <= 1.01) {
+        if (!this.isZoomedIn()) {
             return;
         }
         const progress = progressAlongRoute(get(livePosition));
@@ -1196,13 +1237,24 @@ export class ElevationProfile {
         if (Math.abs(here - middle) < (scale.max - scale.min) * 0.02) {
             return;
         }
-        const shift = scale.getPixelForValue(middle) - scale.getPixelForValue(here);
-        if (!Number.isFinite(shift) || shift === 0) {
+        // Set as a range of distance rather than slid by a number of pixels:
+        // a pixel count is only as good as the chart's layout at that instant,
+        // and a chart that has not been laid out yet has none.
+        const dataset = this._chart.data.datasets[0] as any;
+        const data = (dataset?._data ?? dataset?.data) as ElevationProfilePoint[] | undefined;
+        if (!data || data.length < 2) {
             return;
         }
-        // At either end of the route the pan stops against the edge, which is
-        // right: there is no more route to put under the middle.
-        (this._chart as any).pan({ x: shift }, undefined, 'default');
+        const first = data[0].x;
+        const last = data[data.length - 1].x;
+        const width = scale.max - scale.min;
+        // At either end of the route the window stops against the edge, which
+        // is right: there is no more route to put under the middle.
+        const min = Math.min(Math.max(here - width / 2, first), Math.max(first, last - width));
+        if (!Number.isFinite(min) || Math.abs(min - scale.min) < width * 0.005) {
+            return;
+        }
+        (this._chart as any).zoomScale('x', { min, max: min + width }, 'default');
     }
 
     /**
@@ -1212,7 +1264,10 @@ export class ElevationProfile {
      * on every fix, and a long day's track is tens of thousands of points.
      */
     private pointAtKm(km: number): ElevationProfilePoint | undefined {
-        const data = this._chart?.data.datasets[0]?.data as ElevationProfilePoint[] | undefined;
+        // With decimation on, `data` is whatever subset is being drawn at this
+        // zoom; the whole profile is kept beside it.
+        const dataset = this._chart?.data.datasets[0] as any;
+        const data = (dataset?._data ?? dataset?.data) as ElevationProfilePoint[] | undefined;
         if (!data || data.length === 0) {
             return undefined;
         }

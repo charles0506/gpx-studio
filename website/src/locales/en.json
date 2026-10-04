@@ -642,7 +642,10 @@
         "tiles": "Tiles",
         "too_many": "More than {n} tiles: the oldest will be dropped to make room. Narrow the zoom range.",
         "automatic": "Fetch tiles when a route is picked",
-        "note": "Tiles are kept for the layers switched on right now. Turning on another layer later means fetching again."
+        "note": "Tiles are kept for the layers switched on right now. Turning on another layer later means fetching again.",
+        "failed_count": "failed",
+        "failed_server": "{n} of {total} map tiles could not be downloaded — the map server did not answer. Those places will look blurred offline when zoomed in. Try again later.",
+        "failed_no_network": "{n} of {total} map tiles could not be downloaded — the connection dropped. Those places will look blurred offline when zoomed in. Try again with a connection."
     },
     "library": {
         "title": "Route library",

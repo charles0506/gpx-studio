@@ -325,7 +325,10 @@ export const settings = {
     centerOnSelection: new Setting('centerOnSelection', false),
     showSelectedOnly: new Setting('showSelectedOnly', false),
     offlineAutoDownload: new Setting('offlineAutoDownload', false),
-    offlineZoomRange: new Setting<number[]>('offlineZoomRange', [13, 18]),
+    // Up to 19, which is as fine as 魯地圖 is drawn. Stopping at 18 left the
+    // last level of zoom — the one used to tell which side of a stream the
+    // path is on — as a stretched copy of the level below it.
+    offlineZoomRange: new Setting<number[]>('offlineZoomRange', [13, 19]),
     distanceMarkers: new Setting('distanceMarkers', false),
     streetViewSource: new Setting<StreetViewSource>(
         'streetViewSource',

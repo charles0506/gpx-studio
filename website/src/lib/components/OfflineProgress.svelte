@@ -1,5 +1,6 @@
 <script lang="ts">
     import { tileProgress } from '$lib/offline';
+    import { i18n } from '$lib/i18n.svelte';
 
     // A bar the width of the map, sitting on top of the file tabs: fetching
     // tiles is something being done for the route you just picked, and that is
@@ -26,7 +27,7 @@
             {$tileProgress.done}/{$tileProgress.total}{#if $tileProgress.failed > 0}<span
                     class="text-destructive"
                 >
-                    ·{$tileProgress.failed}</span
+                    · {i18n._('offline.failed_count')} {$tileProgress.failed}</span
                 >{/if}
         </span>
     </div>

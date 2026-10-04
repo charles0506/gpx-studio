@@ -3,6 +3,8 @@ import { map } from '$lib/components/map/map';
 import { gpxStatistics } from '$lib/logic/statistics';
 import type { GPXStatisticsGroup } from 'gpx';
 import { TILE_CACHE } from '$lib/offline-limits';
+import { i18n } from '$lib/i18n.svelte';
+import { toast } from 'svelte-sonner';
 
 /**
  * Tiles are cached as they are fetched, one file per zoom level, so a route
@@ -228,5 +230,21 @@ export async function fetchTiles(
 
     await Promise.all(Array.from({ length: WORKERS }, worker));
     clearTimer = setTimeout(() => tileProgress.set(undefined), LINGER_MS);
+
+    // Said in words, and said once. The count beside the bar was a small red
+    // number with nothing to explain it, gone four seconds later — and what
+    // it meant is that part of the map is not there: offline, those places
+    // show a coarser tile stretched to fit, which reads as a map that was
+    // downloaded and is somehow still blurred.
+    if (progress.failed > 0 && !signal?.aborted) {
+        const offline = typeof navigator !== 'undefined' && navigator.onLine === false;
+        toast.error(
+            i18n
+                ._(offline ? 'offline.failed_no_network' : 'offline.failed_server')
+                .replace('{n}', String(progress.failed))
+                .replace('{total}', String(progress.total)),
+            { duration: 12000 }
+        );
+    }
     return progress;
 }

@@ -183,6 +183,20 @@
         @apply bottom-[42px];
     }
 
+    /* Reads as a caption to the scale bar it sits on, not as a button. */
+    div :global(.tile-level-control) {
+        @apply px-1.5;
+        @apply py-0.5;
+        @apply rounded;
+        @apply text-[11px];
+        @apply leading-none;
+        @apply tabular-nums;
+        @apply text-foreground;
+        @apply bg-background/80;
+        @apply pointer-events-none;
+        @apply select-none;
+    }
+
     div :global(.maplibregl-ctrl-attrib) {
         @apply dark:bg-transparent;
     }

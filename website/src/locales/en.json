@@ -693,5 +693,9 @@
         "warning": "Upload replaces what is stored; download replaces what is open. There is no merge.",
         "slot": "Workspace",
         "slot_name": "Name this workspace (on this device)"
+    },
+    "map": {
+        "tile_level": "Tile level {n}",
+        "tile_level_finest": "Tile level {n} (finest)"
     }
 }

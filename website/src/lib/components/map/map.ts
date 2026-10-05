@@ -324,6 +324,45 @@ export class MapLibreGLMap {
             unit: get(distanceUnits),
         });
         map.addControl(scaleControl);
+
+        // Which level of map tile is on screen, said beside the scale.
+        //
+        // The offline download asks for a range of levels, and there was no way
+        // to find out what a level looks like except to download it and go and
+        // see. With the number on the map, zooming to the view you want to have
+        // on the hill tells you which level to fetch down to.
+        //
+        // It is the level of the tiles, not the map's own zoom: the two differ
+        // by one for the 256-pixel tiles most of these maps are cut into, and
+        // the tile level is the one the download is counted in.
+        const levelElement = document.createElement('div');
+        levelElement.className = 'maplibregl-ctrl tile-level-control';
+        const tileLevel = () => {
+            const sources = Object.values(map.getStyle()?.sources ?? {}) as any[];
+            const raster = sources.find((source) => source?.type === 'raster' && source.tiles);
+            const size = raster?.tileSize ?? 512;
+            let level = Math.floor(map.getZoom() + Math.log2(512 / size));
+            const finest = raster?.maxzoom;
+            const atFinest = typeof finest === 'number' && level >= finest;
+            if (typeof finest === 'number') {
+                level = Math.min(level, finest);
+            }
+            level = Math.max(level, raster?.minzoom ?? 0);
+            levelElement.textContent = i18n
+                ._(atFinest ? 'map.tile_level_finest' : 'map.tile_level')
+                .replace('{n}', String(level));
+        };
+        map.addControl(
+            {
+                onAdd: () => levelElement,
+                onRemove: () => levelElement.remove(),
+            },
+            // With the scale, which is the other thing that says how far in
+            // you are.
+            'bottom-left'
+        );
+        map.on('zoom', tileLevel);
+        map.on('styledata', tileLevel);
         map.on('load', () => {
             this._map = map;
             this._mapStore.set(map); // only set the store after the map has loaded

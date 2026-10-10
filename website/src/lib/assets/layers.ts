@@ -422,11 +422,20 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 url: radarSourceFor('cwaRadarAll'),
                 // LongitudeRange 118-124 and LatitudeRange 20.5-26.5, as the
                 // dataset metadata declares, clockwise from the top left.
+                //
+                // The top and bottom are not quite where the image's edges
+                // are, on purpose. The image is drawn evenly in latitude; the
+                // map stretches it evenly in Mercator, where a degree grows
+                // taller the further north it is. Pinned by its true edges,
+                // everything between them is drawn too far north — by most
+                // in the middle, which is where the land is. These are the
+                // edges that make the two agree over the land instead.
+                // Up to 3.8 km out over the island before; 0.6 km now.
                 coordinates: [
-                    [118, 26.5],
-                    [124, 26.5],
-                    [124, 20.5],
-                    [118, 20.5],
+                    [118, 26.4726],
+                    [124, 26.4726],
+                    [124, 20.4699],
+                    [118, 20.4699],
                 ],
             },
         },
@@ -450,11 +459,20 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 // and handed over by the style manager. See lib/cwa-radar.ts.
                 url: radarSourceFor('cwaRadarNorth'),
                 // 150 km around the station, clockwise from the top left.
+                //
+                // The top and bottom are not quite where the image's edges
+                // are, on purpose. The image is drawn evenly in latitude; the
+                // map stretches it evenly in Mercator, where a degree grows
+                // taller the further north it is. Pinned by its true edges,
+                // everything between them is drawn too far north — by most
+                // in the middle, which is where the land is. These are the
+                // edges that make the two agree over the land instead.
+                // 0.8 km out around Taipei before; under 0.1 km now.
                 coordinates: [
-                    [119.9132, 26.3566],
-                    [122.8868, 26.3566],
-                    [122.8868, 23.6434],
-                    [119.9132, 23.6434],
+                    [119.9132, 26.3472],
+                    [122.8868, 26.3472],
+                    [122.8868, 23.6386],
+                    [119.9132, 23.6386],
                 ],
             },
         },
@@ -478,11 +496,20 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 // and handed over by the style manager. See lib/cwa-radar.ts.
                 url: radarSourceFor('cwaRadarCentral'),
                 // 150 km around the station, clockwise from the top left.
+                //
+                // The top and bottom are not quite where the image's edges
+                // are, on purpose. The image is drawn evenly in latitude; the
+                // map stretches it evenly in Mercator, where a degree grows
+                // taller the further north it is. Pinned by its true edges,
+                // everything between them is drawn too far north — by most
+                // in the middle, which is where the land is. These are the
+                // edges that make the two agree over the land instead.
+                // 0.8 km out before; under 0.2 km now.
                 coordinates: [
-                    [119.1034, 25.4966],
-                    [122.0566, 25.4966],
-                    [122.0566, 22.7834],
-                    [119.1034, 22.7834],
+                    [119.1034, 25.4897],
+                    [122.0566, 25.4897],
+                    [122.0566, 22.7787],
+                    [119.1034, 22.7787],
                 ],
             },
         },
@@ -506,11 +533,20 @@ export const overlays: { [key: string]: string | StyleSpecification } = {
                 // and handed over by the style manager. See lib/cwa-radar.ts.
                 url: radarSourceFor('cwaRadarSouth'),
                 // 150 km around the station, clockwise from the top left.
+                //
+                // The top and bottom are not quite where the image's edges
+                // are, on purpose. The image is drawn evenly in latitude; the
+                // map stretches it evenly in Mercator, where a degree grows
+                // taller the further north it is. Pinned by its true edges,
+                // everything between them is drawn too far north — by most
+                // in the middle, which is where the land is. These are the
+                // edges that make the two agree over the land instead.
+                // 0.7 km out before; under 0.2 km now.
                 coordinates: [
-                    [118.9212, 23.8866],
-                    [121.8388, 23.8866],
-                    [121.8388, 21.1734],
-                    [118.9212, 21.1734],
+                    [118.9212, 23.8825],
+                    [121.8388, 23.8825],
+                    [121.8388, 21.1662],
+                    [118.9212, 21.1662],
                 ],
             },
         },

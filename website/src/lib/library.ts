@@ -107,9 +107,19 @@ export async function shelveAll(
     return shelveFiles(fileIds, onProgress);
 }
 
-async function shelveFiles(
+/**
+ * Put these routes on the shelf, leaving alone the ones already there
+ * unchanged.
+ *
+ * `leaveOut` is asked about each route that would otherwise be sent, with
+ * the id it would go under and the fingerprint of what would be sent: the
+ * unattended backup uses it to respect a route having been taken off the
+ * shelf on purpose.
+ */
+export async function shelveFiles(
     fileIds: string[],
-    onProgress?: (done: number, total: number) => void
+    onProgress?: (done: number, total: number) => void,
+    leaveOut?: (id: string, hash: string) => boolean
 ): Promise<LibraryEntry[]> {
     // What is on the shelf already, so that a route which has not been
     // touched since it was last put there is not sent again. Shelving a
@@ -150,6 +160,9 @@ async function shelveFiles(
         const id = existing.get(legacy)?.name === name ? legacy : idFor(name);
         const hash = await fingerprint(gpx);
         if (existing.get(id)?.hash === hash) {
+            continue;
+        }
+        if (leaveOut?.(id, hash)) {
             continue;
         }
         const km = global ? global.distance.total.toFixed(2) : '';

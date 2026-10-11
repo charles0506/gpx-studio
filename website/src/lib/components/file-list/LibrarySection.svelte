@@ -12,6 +12,7 @@
         shelveAll,
         type LibraryEntry,
     } from '$lib/library';
+    import { autoShelved, forgetLeftOff, leaveOffShelf } from '$lib/library-auto';
     import { settings } from '$lib/logic/settings';
 
     // The shelf sits under the open files rather than behind a dialog: picking
@@ -61,6 +62,23 @@
         clearTimeout(noticeTimer);
         noticeTimer = setTimeout(() => (notice = undefined), 5000);
     }
+
+    // Routes the unattended backup has just put on the shelf, added to the
+    // list here for the same reason a manual upload adds its own: asking
+    // the shelf again would not show them for up to a minute.
+    $effect(() => {
+        const saved = $autoShelved;
+        if (saved.length === 0) {
+            return;
+        }
+        const merged = new Map(routes.map((route) => [route.id, route]));
+        for (const entry of saved) {
+            merged.set(entry.id, entry);
+        }
+        routes = [...merged.values()].sort((a, b) => (a.name ?? '').localeCompare(b.name ?? ''));
+        say(i18n._('library.auto_shelved').replace('{n}', String(saved.length)));
+        autoShelved.set([]);
+    });
 
     // One press sends the lot. It used to send the selection when there was
     // one and everything otherwise, which read well and worked badly:
@@ -122,6 +140,9 @@
                 onclick={() =>
                     run(async () => {
                         let saved;
+                        // Asked for by hand, so everything goes — including
+                        // anything taken off the shelf earlier.
+                        forgetLeftOff();
                         try {
                             saved = await shelveAll((done, count) => {
                                 working = `${done}/${count}`;
@@ -189,6 +210,8 @@
                             armed = undefined;
                             run(async () => {
                                 await removeRoute(route.id);
+                                // Or the backup puts it straight back.
+                                leaveOffShelf(route.id, route.hash);
                                 // Dropped here rather than by re-reading: the listing is
                                 // eventually consistent, so it would hand the route back.
                                 routes = routes.filter((other) => other.id !== route.id);

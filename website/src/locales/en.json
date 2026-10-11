@@ -664,7 +664,8 @@
         "loading": "Reading the library…",
         "timeout": "No answer from the library — the connection may be too weak. Try refresh.",
         "offline": "Could not reach the library — check the connection.",
-        "confirm_remove": "Delete?"
+        "confirm_remove": "Delete?",
+        "auto_shelved": "Backed up {n} route(s) that had been open for over an hour"
     },
     "share": {
         "opened": "routes came in from the link",

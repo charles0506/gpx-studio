@@ -664,7 +664,8 @@
         "loading": "讀取中…",
         "timeout": "雲端沒有回應，可能訊號太弱，請按重新整理再試。",
         "offline": "連不上雲端，請檢查網路。",
-        "confirm_remove": "確定刪除？"
+        "confirm_remove": "確定刪除？",
+        "auto_shelved": "已自動備份 {n} 條開啟超過一小時的路線"
     },
     "share": {
         "opened": "條路線已從連結帶入",

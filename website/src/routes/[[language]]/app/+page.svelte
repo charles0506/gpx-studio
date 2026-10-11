@@ -14,6 +14,7 @@
     import UpdatePrompt from '$lib/components/UpdatePrompt.svelte';
     // Subscribes on import: fetching tiles for a route as it is picked.
     import '$lib/offline-auto';
+    import '$lib/library-auto';
     // Subscribes on import: forgetting a route's tiles when it is closed.
     import '$lib/offline-registry';
     import ClimbBanner from '$lib/components/map/ClimbBanner.svelte';

@@ -31,6 +31,11 @@ let fitBoundsOptions: maplibregl.MapOptions['fitBoundsOptions'] = {
     easing: () => 1,
 };
 
+// Where pressing the locate button puts the map: level 17 of the tiles, which
+// are 256 pixels to the map's 512 and so one level ahead of its own zoom. Close
+// enough to read a junction, with the ground around it still in view.
+const LOCATE_ZOOM = 16;
+
 // Whether the map was following you when you last closed it. Kept out of the
 // synced settings on purpose: it is about this device's screen and this
 // walk, not about how the app is set up.
@@ -168,25 +173,26 @@ export class MapLibreGLMap {
             // crosses, and a few seconds later you are back at zoom 15 looking
             // at the hillside.
             //
-            // The framing is worth having exactly once — the first fix, when
-            // the map may still be showing half of Taiwan. After that the zoom
-            // is yours and the camera only follows you across it.
+            // So the zoom is set once, at LOCATE_ZOOM, when the button is pressed
+            // — and on the first fix of a page with no view of its own, when the
+            // map may still be showing half of Taiwan. After that the zoom is
+            // yours and the camera only follows you across it.
             const control = geolocateControl as unknown as {
                 _updateCamera: (position: GeolocationPosition) => void;
             };
-            const frameOnFirstFix = control._updateCamera;
             // A view put back from last time is a view somebody chose, and
             // resuming the tracking must not take it away again.
-            let framed = wasViewRestored();
+            let zoomOnNextFix = !wasViewRestored();
+            const pressedLocate = () => {
+                zoomOnNextFix = true;
+            };
             control._updateCamera = (position: GeolocationPosition) => {
-                if (!framed) {
-                    framed = true;
-                    frameOnFirstFix(position);
-                    return;
-                }
+                const zoom = zoomOnNextFix ? LOCATE_ZOOM : map.getZoom();
+                zoomOnNextFix = false;
                 map.easeTo(
                     {
                         center: [position.coords.longitude, position.coords.latitude],
+                        zoom,
                         bearing: map.getBearing(),
                         duration: 0,
                     },
@@ -254,6 +260,11 @@ export class MapLibreGLMap {
             // the other hand holding something, and the top corner of a phone
             // is the far end of a thumb.
             map.addControl(geolocateControl, 'bottom-right');
+            // In the capture phase, ahead of the control's own listener: pressing
+            // the button when a fix is already known moves the camera at once.
+            map.getContainer()
+                .querySelector('.maplibregl-ctrl-geolocate')
+                ?.addEventListener('click', pressedLocate, { capture: true });
 
             // The control disables its own button when the browser reports
             // the location permission as refused, and disables it again after

@@ -98,6 +98,7 @@ export class ElevationProfile {
     // gesture meant that zooming in — the one moment you look to see whether
     // the chart has found you — was always inside the pause.
     private _handledAt = 0;
+    private _followTimer: ReturnType<typeof setTimeout> | undefined = undefined;
 
     private _gpxStatistics: Readable<GPXStatisticsGroup>;
     private _slicedGPXStatistics: Writable<[GPXGlobalStatistics, number, number] | undefined>;
@@ -959,6 +960,12 @@ export class ElevationProfile {
      * miserable for comparing one climb with the next: out all the way, in
      * all the way, twice per climb. The segments are already known — they are
      * drawn along the foot of the chart — so a climb can simply be asked for.
+     *
+     * While a fix places you on the route, the climb is the one you are on,
+     * wherever the tap landed, with you in the middle of it. Zooming to where
+     * the finger happened to be put you off the chart, which on a walk is the
+     * one thing the chart is there to show. Another climb can still be read by
+     * holding a finger on it.
      */
     zoomAround(km: number | undefined) {
         if (!this._chart) {
@@ -968,6 +975,10 @@ export class ElevationProfile {
             this._chart.resetZoom();
             return;
         }
+        const progress = progressAlongRoute(get(livePosition));
+        const here =
+            progress && progress.offRouteMeters <= OFF_ROUTE_METERS ? progress.km : undefined;
+        km = here ?? km;
         if (km === undefined) {
             return;
         }
@@ -990,16 +1001,11 @@ export class ElevationProfile {
             'default'
         );
 
-        // Asking for a climb you are not on is asking to look away from
-        // yourself, and gets a moment to do it in. Asking for the one under
-        // your feet does not: there the chart should simply find you.
-        const progress = progressAlongRoute(get(livePosition));
-        if (progress && (progress.km < from - margin || progress.km > to + margin)) {
-            this._handledAt = Date.now();
-        } else {
-            this.followLivePosition();
-            this.updateOverlay();
-        }
+        // The finger is usually still down at this point, and following waits
+        // for it. Lifting it runs this again.
+        this._handledAt = 0;
+        this.followLivePosition();
+        this.updateOverlay();
     }
     // Each climb and each descent gets a band along the foot of the chart,
     // coloured by how steep it is — the same read as a ClimbPro screen, in the
@@ -1219,7 +1225,16 @@ export class ElevationProfile {
         // A few seconds of quiet after the view was slid away by hand. Long
         // enough to read what you slid it to, short enough that walking on
         // hands the chart back without asking.
-        if (Date.now() - this._handledAt < 8000) {
+        const quietFor = 8000 - (Date.now() - this._handledAt);
+        if (quietFor > 0) {
+            // Come back when the quiet is over rather than at the next fix:
+            // somebody standing still may not produce one for a long time, and
+            // the chart would stay wherever it was slid to.
+            clearTimeout(this._followTimer);
+            this._followTimer = setTimeout(() => {
+                this.followLivePosition();
+                this.updateOverlay();
+            }, quietFor + 50);
             return;
         }
         if (!this.isZoomedIn()) {

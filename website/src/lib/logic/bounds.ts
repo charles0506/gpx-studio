@@ -9,6 +9,7 @@ import type { GPXFileWithStatistics } from './statistics-tree';
 import type { Coordinates } from 'gpx';
 import { page } from '$app/state';
 import { settings } from '$lib/logic/settings';
+import { wasViewRestored } from '$lib/last-view';
 
 export class BoundsManager {
     private _bounds: LngLatBounds = new LngLatBounds();
@@ -20,11 +21,14 @@ export class BoundsManager {
     // The bounds to centre on come from those statistics, and they are still the
     // last selection's at the moment the selection itself changes.
     private _centerOnNextStatistics = false;
+    private _leaveMapAlone = false;
 
     constructor() {
         this._fileStateCollectionObserver = new GPXFileStateCollectionObserver(
             (newFiles) => {
-                if (page.url.hash.length == 0) {
+                // Routes coming back with the page, not routes being opened: with
+                // a view to return to, framing them would only take it away.
+                if (page.url.hash.length == 0 && !wasViewRestored()) {
                     this.fitBoundsOnLoad(Array.from(newFiles.keys()));
                 }
             },
@@ -36,7 +40,7 @@ export class BoundsManager {
         // long day out is a pan and a zoom every time a file is picked from the
         // list. Off by default: it takes the map away from wherever it was.
         selection.subscribe((selected) => {
-            if (get(settings.centerOnSelection) && selected.size > 0) {
+            if (get(settings.centerOnSelection) && selected.size > 0 && !this._leaveMapAlone) {
                 this._centerOnNextStatistics = true;
             }
         });
@@ -46,6 +50,16 @@ export class BoundsManager {
                 this.centerMapOnSelection();
             }
         });
+    }
+
+    /** Change the selection without the map following it. */
+    withoutCentering(change: () => void) {
+        this._leaveMapAlone = true;
+        try {
+            change();
+        } finally {
+            this._leaveMapAlone = false;
+        }
     }
 
     fitBoundsOnLoad(files: string[]) {

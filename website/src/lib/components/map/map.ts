@@ -16,6 +16,7 @@ import MaplibreGeocoder, {
 import '@maplibre/maplibre-gl-geocoder/dist/maplibre-gl-geocoder.css';
 import { get, writable, type Writable } from 'svelte/store';
 import { toast } from 'svelte-sonner';
+import { saveView, takeSavedView, wasViewRestored } from '$lib/last-view';
 import { i18n } from '$lib/i18n.svelte';
 import { settings } from '$lib/logic/settings';
 import { tick } from 'svelte';
@@ -76,6 +77,9 @@ export class MapLibreGLMap {
         maplibregl.setWorkerUrl(workerUrl);
         this._maptilerKey = maptilerKey;
         this._styleManager = new StyleManager(this._mapStore, this._maptilerKey);
+        // An address with a position in it says where to look, and so does
+        // being an embedded map, which is not somebody's own screen to resume.
+        const lastView = hash && window.location.hash.length <= 1 ? takeSavedView() : undefined;
         const map = new maplibregl.Map({
             container: 'map',
             style: {
@@ -86,7 +90,10 @@ export class MapLibreGLMap {
                 sources: {},
                 layers: [],
             },
+            // Spread rather than passed one by one: a key present with nothing
+            // in it is not the same as no key, and the camera turns it into NaN.
             zoom: 0,
+            ...lastView,
             hash: hash,
             boxZoom: false,
             maxPitch: 90,
@@ -168,7 +175,9 @@ export class MapLibreGLMap {
                 _updateCamera: (position: GeolocationPosition) => void;
             };
             const frameOnFirstFix = control._updateCamera;
-            let framed = false;
+            // A view put back from last time is a view somebody chose, and
+            // resuming the tracking must not take it away again.
+            let framed = wasViewRestored();
             control._updateCamera = (position: GeolocationPosition) => {
                 if (!framed) {
                     framed = true;
@@ -371,6 +380,17 @@ export class MapLibreGLMap {
             scaleControl.setUnit(get(distanceUnits));
         });
         map.on('style.load', this.callOnLoadBinded);
+        if (hash) {
+            map.on('moveend', () => {
+                const center = map.getCenter();
+                saveView({
+                    center: [center.lng, center.lat],
+                    zoom: map.getZoom(),
+                    bearing: map.getBearing(),
+                    pitch: map.getPitch(),
+                });
+            });
+        }
 
         this._unsubscribes.push(treeFileView.subscribe(() => this.resize()));
         this._unsubscribes.push(elevationProfile.subscribe(() => this.resize()));

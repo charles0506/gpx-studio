@@ -38,15 +38,54 @@ const sw = self as unknown as ServiceWorkerGlobalScope;
 
 const APP_ASSETS = [...build, ...files, ...prerendered];
 
+// What is worth fetching ahead of being asked for. Everything was, once: 1200
+// files and 36 MB on every deploy, over whatever connection the phone had, for
+// the pages of thirteen languages nobody here reads, the pictures in the guide
+// and a 6 MB sitemap. Anything left out still works online, and is kept once it
+// has been fetched.
+function worthPrecaching(asset: string): boolean {
+    const path = asset.replace(base, '');
+    if (path.endsWith('.xml') || /\/immutable\/assets\/.*\.(png|jpe?g|webp|gif|avif|mp4)$/.test(path)) {
+        return false;
+    }
+    if (prerendered.includes(asset)) {
+        return (path === '/' || path.startsWith('/zh-TW')) && !path.includes('/help');
+    }
+    return true;
+}
+
+// Files named for their contents are the same file in every version, and most of
+// them do not change from one deploy to the next. Copied across rather than
+// fetched again.
+async function precache(cache: Cache, asset: string) {
+    try {
+        const kept = asset.includes('/_app/immutable/') ? await caches.match(asset) : undefined;
+        if (kept) {
+            await cache.put(asset, kept);
+        } else {
+            await cache.add(asset);
+        }
+    } catch {
+        // One bad asset should not fail the whole install.
+    }
+}
+
 sw.addEventListener('install', (event) => {
     event.waitUntil(
         caches
             .open(APP_CACHE)
-            // One bad asset should not fail the whole install, so they are added
-            // one by one rather than through addAll.
-            .then((cache) =>
-                Promise.all(APP_ASSETS.map((asset) => cache.add(asset).catch(() => undefined)))
-            )
+            .then(async (cache) => {
+                const wanted = APP_ASSETS.filter(worthPrecaching);
+                // A few at a time: a thousand requests at once is how a phone on
+                // one bar of signal comes to fail all of them.
+                let next = 0;
+                const worker = async () => {
+                    while (next < wanted.length) {
+                        await precache(cache, wanted[next++]);
+                    }
+                };
+                await Promise.all(Array.from({ length: 8 }, worker));
+            })
             .then(() => sw.skipWaiting())
     );
 });
@@ -56,9 +95,13 @@ sw.addEventListener('activate', (event) => {
         caches
             .keys()
             .then((keys) =>
+                // The version before this one stays. A page opened from the
+                // cache is still that version when this runs, partway through
+                // loading its scripts, and those have gone from the server.
                 Promise.all(
                     keys
                         .filter((key) => key !== APP_CACHE && key !== TILE_CACHE)
+                        .slice(0, -1)
                         .map((key) => caches.delete(key))
                 )
             )
@@ -141,6 +184,21 @@ async function handleTile(request: Request): Promise<Response> {
         if (response.ok && cache) {
             await store(cache, request, response);
         }
+        if (response.ok) {
+            return response;
+        }
+        // This site's own address has a daily allowance, and past it every
+        // tile is refused. The usual server can still be asked directly.
+        const former = formerTileUrl(request.url);
+        if (former) {
+            const direct = await fetch(former).catch(() => undefined);
+            if (direct?.ok) {
+                if (cache) {
+                    await store(cache, request, direct);
+                }
+                return direct;
+            }
+        }
         return response;
     } catch {
         return new Response('', { status: 504, statusText: 'offline' });
@@ -149,16 +207,25 @@ async function handleTile(request: Request): Promise<Response> {
 
 // The page itself, as opposed to the things it loads.
 //
-// The HTML names the content-hashed scripts to load, so a cached page from
-// before a deploy asks for scripts that no longer exist, and the app comes up
-// with half its modules missing. Served from the network first, the page always
-// matches what is deployed; the cached copy is there for when there is no
-// network, which on a hill is often.
+// The cached copy first. Asking the network first meant that on one bar of
+// signal, the page waited on the network before anything could start — every
+// time, since a phone discards a page it is not looking at — only to be told
+// what the cache already knew. A new version is noticed on the same visit, by
+// the browser checking this worker, and is what the next visit opens.
 //
-// A page carrying a query is not cached at all: every shared link would
+// Scripts from the version opened this way can vanish from the server while it
+// loads, if a deploy happened since: handleAppAsset looks for them in every
+// cache, and activation leaves the previous version's in place.
+//
+// A page carrying a query is the same page, and the app reads the query from
+// the address bar. It is not cached in its own right: every shared link would
 // otherwise leave its own copy of the whole page behind.
 async function handlePage(request: Request, url: URL): Promise<Response> {
     const cache = await caches.open(APP_CACHE);
+    const ready = await cache.match(url.pathname);
+    if (ready) {
+        return ready;
+    }
     try {
         const response = await fetch(request);
         if (response.ok && url.search === '') {
@@ -187,6 +254,14 @@ async function handlePage(request: Request, url: URL): Promise<Response> {
 async function handleAppAsset(request: Request, url: URL): Promise<Response> {
     const cache = await caches.open(APP_CACHE);
     const path = url.pathname;
+
+    // Named for their contents, so a copy from any version is the right one.
+    if (path.includes('/_app/immutable/')) {
+        const kept = await caches.match(request);
+        if (kept) {
+            return kept;
+        }
+    }
 
     if (APP_ASSETS.includes(path) || APP_ASSETS.includes(path.replace(base, ''))) {
         const cached = await cache.match(request);

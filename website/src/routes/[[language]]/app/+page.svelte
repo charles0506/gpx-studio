@@ -15,6 +15,7 @@
     // Subscribes on import: fetching tiles for a route as it is picked.
     import '$lib/offline-auto';
     import '$lib/library-auto';
+    import { resumeSelection } from '$lib/last-selection';
     // Subscribes on import: forgetting a route's tiles when it is closed.
     import '$lib/offline-registry';
     import ClimbBanner from '$lib/components/map/ClimbBanner.svelte';
@@ -108,6 +109,8 @@
             let files: string[] = JSON.parse(page.url.searchParams.get('files') || '[]');
             let ids: string[] = JSON.parse(page.url.searchParams.get('ids') || '[]');
             let urls: string[] = files.concat(ids.map(getURLForGoogleDriveFile));
+
+            resumeSelection(urls.length === 0 && !page.url.searchParams.get('share'));
 
             if (urls.length > 0) {
                 let downloads: Promise<File | null>[] = [];

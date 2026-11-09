@@ -6,6 +6,14 @@ export class GPXGlobalStatistics {
     distance: {
         moving: number;
         total: number;
+        /**
+         * The part of the total that has times to go with it. Average speed
+         * is this over the time, not the whole distance over the time: a
+         * planned route has no times, and putting its kilometres over the
+         * hours of a recorded one beside it made 105 km in 11 hours read as
+         * 202 km in 11 hours.
+         */
+        timed: number;
     };
     time: {
         start: Date | undefined;
@@ -48,6 +56,7 @@ export class GPXGlobalStatistics {
         this.distance = {
             moving: 0,
             total: 0,
+            timed: 0,
         };
         this.time = {
             start: undefined,
@@ -97,6 +106,7 @@ export class GPXGlobalStatistics {
 
         this.distance.total += other.distance.total;
         this.distance.moving += other.distance.moving;
+        this.distance.timed += other.distance.timed;
 
         this.time.start =
             this.time.start !== undefined && other.time.start !== undefined
@@ -112,7 +122,7 @@ export class GPXGlobalStatistics {
 
         this.speed.moving =
             this.time.moving > 0 ? this.distance.moving / (this.time.moving / 3600) : 0;
-        this.speed.total = this.time.total > 0 ? this.distance.total / (this.time.total / 3600) : 0;
+        this.speed.total = this.time.total > 0 ? this.distance.timed / (this.time.total / 3600) : 0;
 
         this.elevation.gain += other.elevation.gain;
         this.elevation.loss += other.elevation.loss;
@@ -248,6 +258,7 @@ export class GPXStatistics {
         statistics.time.end = this.local.points[end].time;
 
         statistics.time.total = this.local.data[end].time.total - this.local.data[start].time.total;
+        statistics.distance.timed = statistics.time.total > 0 ? statistics.distance.total : 0;
         statistics.time.moving =
             this.local.data[end].time.moving - this.local.data[start].time.moving;
 

@@ -952,9 +952,11 @@ export class TrackSegment extends GPXTreeLeaf {
                 ? (statistics.global.time.end.getTime() - statistics.global.time.start.getTime()) /
                   1000
                 : 0;
+        statistics.global.distance.timed =
+            statistics.global.time.total > 0 ? statistics.global.distance.total : 0;
         statistics.global.speed.total =
             statistics.global.time.total > 0
-                ? statistics.global.distance.total / (statistics.global.time.total / 3600)
+                ? statistics.global.distance.timed / (statistics.global.time.total / 3600)
                 : 0;
         statistics.global.speed.moving =
             statistics.global.time.moving > 0

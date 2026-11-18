@@ -149,6 +149,14 @@ export class BoundsManager {
             bounds.setSouthWest(selectionBounds.southWest);
         }
 
+        // A file just made has no points yet, and its bounds are the empty
+        // ones — the whole world inside out. Fitted to, they put the map at
+        // zoom 0 over the Pacific, a long way from where the route is about
+        // to be drawn. Nothing to centre on is a reason to stay put.
+        if (bounds.isEmpty() || bounds.getSouth() > bounds.getNorth() || bounds.getWest() > bounds.getEast()) {
+            return;
+        }
+
         get(map)?.fitBounds(bounds, {
             padding: 80,
             easing: () => 1,
